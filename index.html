@@ -248,6 +248,10 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 .lcdicons .bat::after{content:"";position:absolute;right:-5px;top:4px;width:3px;height:6px;background:#1D2610}
 .lcdicons .bat i{width:7px;height:8px;background:#1D2610;display:block}
 .lcdline{font:500 17px/1.35 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em}
+.lcdlist{display:flex;flex-direction:column;gap:12px}
+.lcdgroup{display:flex;flex-direction:column;gap:6px}
+.lcdgroup h4{margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.lcdlist .chip[aria-pressed="true"]{background:var(--lit);border-color:var(--lit);color:var(--lit-ink)}
 .batinfo summary{cursor:pointer;font-weight:600;font-size:14px;padding:4px 0}
 .batinfo{display:flex;flex-direction:column;gap:8px}
 </style>
@@ -290,7 +294,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
     </div>
     <p class="howto" id="howto"></p>
 
-    <div class="steps">
+    <div class="steps" id="steps">
       <span class="step on" id="st1">1 · Categoria</span>
       <span class="step" id="st2">2 · Detalhe</span>
     </div>
@@ -336,7 +340,8 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
         <div class="lcdline" id="lcd1">Problema</div>
         <div class="lcdline" id="lcd2">Toque abaixo</div>
       </div>
-      <p class="devnote">Toque na lista abaixo o problema que o visor mostrou. Havendo mais de um, o visor mostra um de cada vez.</p>
+      <p class="devnote">Toque na mensagem que o visor mostrou. Havendo mais de um problema, o visor mostra um de cada vez: marque todos.</p>
+      <div class="lcdlist" id="lcdlist"></div>
       <details class="batinfo">
         <summary>Ícone de bateria do visor</summary>
         <div class="tbl"><table>
@@ -354,7 +359,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
     <div id="combo"></div>
     <div class="results" id="results" aria-live="polite"></div>
 
-    <h3>Todas as categorias</h3>
+    <h3 id="allcats">Todas as categorias</h3>
     <div class="chips" id="catchips" hidden></div>
     <div class="legend" id="legend"></div>
     <div class="row">
@@ -559,11 +564,24 @@ PAD.forEach(p=>{
   $("zleds").appendChild(b);
 });
 $("zleds").addEventListener("click",e=>{const b=e.target.closest(".zled");if(b&&!b.disabled)toggle(+b.dataset.k);});
+function renderLcdList(){
+  $("lcdlist").innerHTML=Object.keys(CATS).map(c=>{
+    const ds=st.det[c]||new Set();
+    const chips=Object.entries(CATS[c].labels).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+v+"</button>").join("");
+    return "<div class='lcdgroup'><h4>"+c+" · "+CATS[c].name+"</h4><div class='chips'>"+chips+"</div></div>";
+  }).join("");
+}
+$("lcdlist").addEventListener("click",e=>{
+  const b=e.target.closest("[data-cat]");if(!b)return;
+  const c=+b.dataset.cat,k=+b.dataset.k,ds=st.det[c]||(st.det[c]=new Set());
+  if(ds.has(k)){ds.delete(k);if(!ds.size)st.cats.delete(c);}else{ds.add(k);st.cats.add(c);}
+  st.last={c:c,k:k};render();
+});
 function renderLcd(){
   let l1="Sem problemas",l2="marcados";
   const cs=[...st.cats].sort();
   if(cs.length){
-    const ls=st.last&&st.cats.has(st.last.c)?st.last:{c:cs[cs.length-1]};
+    const ls=(st.model!="lcd"&&st.step=="det"&&st.active)?(st.last&&st.last.c==st.active?st.last:{c:st.active}):(st.last&&st.cats.has(st.last.c)?st.last:{c:cs[cs.length-1]});
     const c=ls.c,ds=st.det[c]||new Set();
     const k=ls.k!=null&&ds.has(ls.k)?ls.k:(ds.size?[...ds].sort().pop():null);
     if(k!=null){l1=CATS[c].name;l2=CATS[c].labels[k];}
@@ -600,6 +618,7 @@ $("back").onclick=()=>{st.step="cat";st.active=null;render();};
 $("reset").onclick=()=>{st.step="cat";st.active=null;st.cats=new Set();st.det={};render();};
 $("model").addEventListener("click",e=>{
   const b=e.target.closest("[data-m]");if(!b)return;st.model=b.dataset.m;
+  if(st.model=="lcd"){st.step="cat";st.active=null;}
   render();
 });
 
@@ -621,6 +640,9 @@ function render(){
     const n=+b.dataset.k,usable=!!L[n];
     b.classList.toggle("lit",usable&&S.has(n));b.disabled=!usable;
   });
+  const isLcd=st.model=="lcd";
+  $("steps").hidden=isLcd;$("allcats").hidden=isLcd;$("legend").hidden=isLcd;
+  if(isLcd){$("back").hidden=true;renderLcdList();}
   renderLcd();
   pad.querySelectorAll(".key").forEach(b=>{
     const k=b.dataset.k,n=+k;
@@ -669,7 +691,7 @@ function catCard(c){
   return "<article class='card info catcard'><div class='top'><h3>Categoria "+c+" · "+CATS[c].name+"</h3><span class='pill'>"+(ds.size?ds.size+" marcada"+(ds.size>1?"s":""):"Falta o detalhe")+"</span></div>"+
     "<p>"+CATINFO[c].what+"</p>"+
     "<p><strong>Primeira verificação:</strong> "+CATINFO[c].first+"</p>"+
-    "<div><h4>Qual tecla acendeu?</h4><p class='ref'>Digite <span class='cmd'>"+c+" + Enter</span> no teclado e toque aqui na mesma tecla:</p></div>"+
+    (st.model=="lcd"?"<div><h4>Qual mensagem o visor mostrou?</h4></div>":"<div><h4>"+(st.model=="xat3000"?"Qual LED acendeu?":"Qual tecla acendeu?")+"</h4><p class='ref'>Digite <span class='cmd'>"+c+" + Enter</span> no teclado e toque aqui "+(st.model=="xat3000"?"no mesmo LED":"na mesma tecla")+":</p></div>")+
     "<div class='chips'>"+btns+"</div></article>";
 }
 function renderResults(){
