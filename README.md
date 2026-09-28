@@ -10,3 +10,5 @@ Funções: leitura das falhas do teclado, medições com OK / Não OK, testes li
 Funciona offline depois do primeiro acesso e pode ser instalado na tela inicial do celular.
 
 Referências: manuais dos fabricantes, ABNT NBR 5410 e NR-10.
+
+![Giba Alarmes](logo/giba-alarmes-logo.png)

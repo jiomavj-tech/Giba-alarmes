@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Diagnóstico de Alarmes</title>
+<title>Giba Alarmes</title>
+<meta name="description" content="Diagnóstico de centrais de alarme em campo: falhas, testes e relatório de atendimento.">
+<meta name="theme-color" content="#10284A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Giba Alarmes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -255,6 +264,12 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 .lcdlist .chip[aria-pressed="true"]{background:var(--lit);border-color:var(--lit);color:var(--lit-ink)}
 .batinfo summary{cursor:pointer;font-weight:600;font-size:14px;padding:4px 0}
 .batinfo{display:flex;flex-direction:column;gap:8px}
+
+.brandrow{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.brandmark{width:52px;height:52px;flex:none}
+.brandtxt{display:flex;flex-direction:column;line-height:.9}
+.bt1{font:700 30px var(--display);letter-spacing:.01em;color:var(--ink)}
+.bt2{font:600 13px var(--display);letter-spacing:.34em;color:var(--accent)}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
 </head>
@@ -263,6 +278,28 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 <div class="wrap">
   <header>
     <nav class="crumbs" id="crumbs" aria-label="Caminho"></nav>
+    <div class="brandrow" id="brandrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="brandmark" aria-hidden="true">
+  <defs>
+    <radialGradient id="gaglow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#7FB8FF" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#2F86F6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#10284A"/>
+  <path d="M256 70 L402 124 V246 C402 336 340 404 256 442 C172 404 110 336 110 246 V124 Z" fill="#163A6B" stroke="#E8EEF6" stroke-width="22" stroke-linejoin="round"/>
+  <g transform="translate(256 262)">
+    <circle cx="-58" cy="-58" r="54" fill="url(#gaglow)"/>
+    <rect x="-86" y="-86" width="56" height="56" rx="12" fill="#3B93FF"/>
+    <rect x="-28" y="-86" width="56" height="56" rx="12" fill="#8FA3BC"/>
+    <rect x="30"  y="-86" width="56" height="56" rx="12" fill="#8FA3BC"/>
+    <rect x="-86" y="-28" width="56" height="56" rx="12" fill="#8FA3BC"/>
+    <rect x="-28" y="-28" width="56" height="56" rx="12" fill="#8FA3BC"/>
+    <rect x="30"  y="-28" width="56" height="56" rx="12" fill="#8FA3BC"/>
+    <rect x="-86" y="30"  width="56" height="56" rx="12" fill="#8FA3BC"/>
+    <rect x="-28" y="30"  width="56" height="56" rx="12" fill="#8FA3BC"/>
+    <rect x="30"  y="30"  width="56" height="56" rx="12" fill="#8FA3BC"/>
+  </g>
+</svg><div class="brandtxt"><span class="bt1">GIBA</span><span class="bt2">ALARMES</span></div></div>
     <h1 id="h1">Diagnóstico de Alarmes</h1>
     <p id="sub">Escolha o fabricante da central.</p>
   </header>
@@ -1255,7 +1292,8 @@ function go(brand,model,push){
   if(b)c.push("<span class='sep'>›</span>"+(m?"<button data-nav='brand'>"+b.name+"</button>":"<span>"+b.name+"</span>"));
   if(m)c.push("<span class='sep'>›</span><span>"+m.name+"</span>");
   $("crumbs").innerHTML=b?c.join(""):"";
-  $("h1").textContent=m?"Diagnóstico "+m.name.split(" ")[0]:b?b.name:"Diagnóstico de Alarmes";
+  $("h1").textContent=m?"Diagnóstico "+m.name.split(" ")[0]:b?b.name:"Diagnóstico de centrais";
+  $("brandrow").hidden=!!b;
   $("sub").textContent=m?"Toque nas teclas que acenderam, registre os testes e gere o relatório do atendimento.":b?"Escolha o modelo da central.":"Escolha o fabricante da central.";
   if(b&&!m)renderModels();
   if(m)switchModel(m.id);
