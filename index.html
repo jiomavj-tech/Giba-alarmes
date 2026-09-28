@@ -466,6 +466,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 const MANUAL = "Manual AMT 2010/2110/2018";
 const REF2010=/Enter 51|Enter \+ Anular|1,0 A|1,2 A|14,8|90–265|J4/;
 function srcLine(d){
+  if(curModelId()=="amt2018eg")return "Manual AMT 2018 E / 2018 EG (doc. 11779-02). Equivale ao manual AMT 2010, "+d.r+".";
   if(curModelId()=="amt3010")return "Tabela de problemas: Guia do usuário AMT 3010. Itens marcados com (ref. AMT 2010) vêm do manual da AMT 2010, "+d.r+": confirme no manual de instalação da AMT 3010.";
   return MANUAL+", "+d.r;
 }
@@ -520,6 +521,17 @@ const CATS = {
 for(let z=1;z<=8;z++){CATS[6].labels[z]="Zona "+z;CATS[7].labels[z]="Zona "+z;}
 
 function detail(cat,k){
+  const d=detailBase(cat,k);
+  if(curModelId()!="amt2018eg"||!d)return d;
+  const x=JSON.parse(JSON.stringify(d));
+  if(cat==4&&k==4){
+    x.m=x.m.concat(["LED2 (ETH) na placa: 1 flash = conectado ao IP1, 2 flashes = IP2, piscando 0,5 s = não conectado","LED3 (GPRS) na placa: apagado = módulo GPRS sem comunicação com a central; piscando 0,5 s = sinal baixo ou antena desconectada","Status das conexões no XAT 2000 LCD: segure a tecla 9 por 2 s (Eth e GPRS, IP1 e IP2)","Nível de sinal GSM no XAT 2000 LCD: segure Anular por 2 s (escala de 1 a 10)"]);
+    x.s=x.s.concat(["Ethernet: conferir cabo de rede, IP da central e servidores IP1/IP2 programados","GPRS (só EG): conferir chip, antena e LEDs LD1/LD2 (chip em uso) e LD3 (rede da operadora) na placa expansora"]);
+  }
+  if(cat==5)x.m=x.m.concat(["Na AMT 2018 E/EG: tecla 3 vale para as zonas 25 a 30 e tecla 5 para as zonas 41 a 48"]);
+  return x;
+}
+function detailBase(cat,k){
   const c=CATS[cat];
   if(c.det[k]) return c.det[k];
   if(cat==2){
@@ -803,7 +815,8 @@ function renderTests(){
     "<div class='test' data-i='"+i+"'><input class='nm' id='t-n-"+i+"' aria-label='Nome do teste' placeholder='Teste' value='"+esc(t.n)+"'>"+
     "<input class='val' id='t-v-"+i+"' aria-label='Valor ou resultado' placeholder='Valor' value='"+esc(t.v)+"'>"+statusHTML(t.s)+
     "<button type='button' class='del'>Remover</button></div>").join(""):"<p class='empty'>Nenhum teste extra. Toque numa sugestão abaixo ou em Adicionar teste.</p>";
-  $("quick").innerHTML=QUICK.filter(q=>!st.tests.some(t=>t.n==q)).map(q=>"<button type='button' data-q='"+esc(q)+"'>+ "+q+"</button>").join("");
+  const Q=curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
+  $("quick").innerHTML=Q.filter(q=>!st.tests.some(t=>t.n==q)).map(q=>"<button type='button' data-q='"+esc(q)+"'>+ "+q+"</button>").join("");
 }
 $("tests").addEventListener("input",e=>{
   const r=e.target.closest(".test");if(!r)return;const t=st.tests[+r.dataset.i];
@@ -922,6 +935,55 @@ const REF={
       <tr><td>Senhas de fábrica: master / instalador</td><td class="v">1234 / 9090</td></tr>
     </table></div>
     <p class="foot">Fontes: Manual Intelbras AMT 2010/2110/2018 (rev. 01/22), itens 3.3–3.6, 4.4–4.7, 5.21–5.24; etiqueta da placa de fonte; ABNT NBR 5410 e NR-10.</p>`,
+  amt2018eg:`<p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>. Entre antes no modo de programação com a senha do instalador.</p>
+    <div class="tbl"><table>
+      <tr><th>Função</th><th>Comando</th></tr>
+      <tr><td>Entrar/sair da programação (instalador 9090, master 1234)</td><td class="v">Enter + senha</td></tr>
+      <tr><td>Ver problemas</td><td class="v">F1 + F1 · LCD: segurar ▲ 3 s</td></tr>
+      <tr><td>Último disparo</td><td class="v">Anular + Enter</td></tr>
+      <tr><td>Zonas por grupo (1–10, 11–20…)</td><td class="v">1 + Enter, 2 + Enter…</td></tr>
+      <tr><td>Limpar bateria fraca e barramento</td><td class="v">Enter + Anular + Enter</td></tr>
+      <tr><td>Supervisão: 1 corte sirene · 2 curto sirene · 3 linha tel.</td><td class="v">Enter + 51 3 + Enter</td></tr>
+      <tr><td>Problema gera disparo: 1 AUX · 2 barramento · 3 sirene · 4 linha · 5 fiação · 6 nenhum</td><td class="v">Enter + 51 5 + Enter</td></tr>
+      <tr><td>Funções gerais (grupos 0, 1, 2)</td><td class="v">Enter + 51 0/1/2 + Enter</td></tr>
+      <tr><td>Tempo para envio da falha de AC (01–99 min)</td><td class="v">Enter + 48 XX + Enter</td></tr>
+      <tr><td>Nível de sinal GSM (fora da programação)</td><td class="v">Segurar Anular 2 s</td></tr>
+      <tr><td>Status das conexões IP1/IP2 (fora da programação)</td><td class="v">Segurar 9 por 2 s</td></tr>
+    </table></div>
+    <h3>LEDs da placa da central</h3>
+    <div class="tbl"><table>
+      <tr><th>LED</th><th>Sinal</th><th>Significado</th></tr>
+      <tr><td>LED2 (ETH)</td><td>Aceso fixo</td><td>Lendo configurações ao ligar</td></tr>
+      <tr><td>LED2 (ETH)</td><td>0,5 s aceso / 0,5 s apagado</td><td>Funcionando, sem conexão com IP1/IP2</td></tr>
+      <tr><td>LED2 / LED3</td><td>1 flash (ciclo 1,5 s)</td><td>Conectado ao IP1</td></tr>
+      <tr><td>LED2 / LED3</td><td>2 flashes (ciclo 1,5 s)</td><td>Conectado ao IP2</td></tr>
+      <tr><td>LED3 (GPRS)</td><td>Aceso fixo</td><td>Iniciando o modem celular</td></tr>
+      <tr><td>LED3 (GPRS)</td><td>Apagado</td><td>Módulo GPRS sem comunicação com a central (na 2018 E, sem placa GPRS, fica apagado)</td></tr>
+      <tr><td>LED3 (GPRS)</td><td>0,5 s aceso / 0,5 s apagado</td><td>Sinal baixo ou antena desconectada</td></tr>
+    </table></div>
+    <h3>LEDs da placa expansora GPRS (2018 EG)</h3>
+    <div class="tbl"><table>
+      <tr><th>LED</th><th>Sinal</th><th>Significado</th></tr>
+      <tr><td>LD1 / LD2</td><td>Aceso fixo</td><td>Chip 1 / chip 2 em uso</td></tr>
+      <tr><td>LD3 (GSM)</td><td>Apagado</td><td>Modem desligado, sem chip ou PIN não configurado</td></tr>
+      <tr><td>LD3 (GSM)</td><td>0,5 s aceso / 0,5 s apagado</td><td>Procurando rede, autenticando ou fazendo login</td></tr>
+      <tr><td>LD3 (GSM)</td><td>1 flash, 3 s apagado</td><td>Registrado na rede da operadora</td></tr>
+      <tr><td>LD3 (GSM)</td><td>2 flashes, 3 s apagado</td><td>Dados ativos (não confirma conexão com o monitoramento: veja o LED3 da placa ou a tecla 9)</td></tr>
+    </table></div>
+    <h3>Valores de referência</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Alimentação de rede</td><td class="v">90–265 V~</td></tr>
+      <tr><td>Fonte da central</td><td class="v">1,8 A</td></tr>
+      <tr><td>Fusível da central</td><td class="v">1,0 A</td></tr>
+      <tr><td>Saída AUX, corrente máxima</td><td class="v">1,2 A</td></tr>
+      <tr><td>Sirene sem / com bateria</td><td class="v">400 mA / 1 A</td></tr>
+      <tr><td>Corte de sirene e AUX (bateria)</td><td class="v">&lt; 10 V</td></tr>
+      <tr><td>Resistor de supervisão da sirene</td><td class="v">2K2 Ω</td></tr>
+      <tr><td>Potência média (com bateria + 1 teclado LCD)</td><td class="v">2018 E: 5 W · EG: 5,5 W</td></tr>
+      <tr><td>Receptor XAR 4000 SMART</td><td class="v">AUX ou fonte 12–15 V / 1,8 A, sem bateria</td></tr>
+    </table></div>
+    <p class="foot">Fonte: Manual do usuário AMT 2018 E / 2018 EG (Intelbras, doc. 11779-02). O arquivo recebido tinha a codificação corrompida e foi decodificado; alguns acentos se perderam, mas números e comandos ficaram legíveis.</p>`,
   amt3010:`<p class="note"><span><strong>Fonte limitada:</strong> por enquanto só o guia do usuário da AMT 3010 foi carregado. Ele não traz valores elétricos nem os comandos de instalador (supervisão, problema gera disparo). Mande o manual de instalação da AMT 3010 para completar esta aba.</span></p>
     <p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>.</p>
     <div class="tbl"><table>
@@ -967,6 +1029,7 @@ function renderAll(){render();renderMeas();renderTests();renderForm();renderRef(
 const BRANDS=[
   {id:"intelbras",name:"Intelbras",models:[
     {id:"amt2010",name:"AMT 2010 / 2110 / 2018",desc:"Teclados XAT 2000, XAT 3000 LED e XAT 2000/4000 LCD · manual rev. 01/22",ready:true},
+    {id:"amt2018eg",name:"AMT 2018 E / 2018 EG",desc:"Centrais monitoradas com Ethernet (E) e Ethernet + GPRS (EG) · teclados XAT 2000 e XAT 2000 LCD · manual 11779-02",ready:true},
     {id:"amt3010",name:"AMT 3010",desc:"Central monitorada · teclados XAT 2000 e XAT 2000 LCD · guia do usuário rev. 02/11",ready:true}
   ]},
   {id:"hikvision",name:"Hikvision",models:[]},
