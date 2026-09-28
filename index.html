@@ -466,6 +466,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 const MANUAL = "Manual AMT 2010/2110/2018";
 const REF2010=/Enter 51|Enter \+ Anular|1,0 A|1,2 A|14,8|90–265|J4/;
 function srcLine(d){
+  if(curModelId()=="amt4010")return "Guia unificado AMT 4010 SMART / SMART NET (01/26) e tutoriais técnicos Intelbras: "+d.r+".";
   if(curModelId()=="amt2018eg")return "Manual AMT 2018 E / 2018 EG (doc. 11779-02). Equivale ao manual AMT 2010, "+d.r+".";
   if(curModelId()=="amt3010")return "Manual AMT 3010 (rev. 01/17) e guia de instalação (01/17). Mesmos comandos da AMT 2010 ("+d.r+" naquele manual).";
   return MANUAL+", "+d.r;
@@ -519,10 +520,14 @@ const CATS = {
   7:{name:"Curto em zona",det:{},labels:{}}
 };
 for(let z=1;z<=8;z++){CATS[6].labels[z]="Zona "+z;CATS[7].labels[z]="Zona "+z;}
+// AMT 4010: índices dos dispositivos do barramento (guia unificado, item 4.37)
+const BUS4010={1:"Receptor XAR 01",2:"Receptor XAR 02",3:"Receptor XAR 03",4:"Receptor XAR 04",5:"Expansor PGM XEP 01",6:"Expansor PGM XEP 02",7:"Expansor PGM XEP 03",8:"Expansor PGM XEP 04",9:"Expansor zonas XEZ 01",10:"Expansor zonas XEZ 02",11:"Expansor zonas XEZ 03",12:"Expansor zonas XEZ 04",13:"Expansor zonas XEZ 05",14:"Expansor zonas XEZ 06"};
+function labelsOf(c){return (curModelId()=="amt4010"&&c==3)?BUS4010:CATS[c].labels;}
 
 function detail(cat,k){
   const d=detailBase(cat,k);
   if(curModelId()=="amt3010"&&d)return detail3010(cat,k,d);
+  if(curModelId()=="amt4010")return detail4010(cat,k,d);
   if(curModelId()!="amt2018eg"||!d)return d;
   const x=JSON.parse(JSON.stringify(d));
   if(cat==4&&k==4){
@@ -530,6 +535,34 @@ function detail(cat,k){
     x.s=x.s.concat(["Ethernet: conferir cabo de rede, IP da central e servidores IP1/IP2 programados","GPRS (só EG): conferir chip, antena e LEDs LD1/LD2 (chip em uso) e LD3 (rede da operadora) na placa expansora"]);
   }
   if(cat==5)x.m=x.m.concat(["Na AMT 2018 E/EG: tecla 3 vale para as zonas 25 a 30 e tecla 5 para as zonas 41 a 48"]);
+  return x;
+}
+function detail4010(cat,k,d){
+  const AB=["Barramento A-B: cabo par trançado blindado 22–24 AWG, até 1 km, ligação em cascata, sem dividir conduíte com rede elétrica","Fios A e B invertidos","Jumper de casamento de impedância fechado só no último dispositivo do barramento","Fonte do dispositivo a no máximo 50 cm dele (12–15 VDC)","Endereço (jumper) repetido com outro dispositivo do mesmo tipo","Com a central desligada: A–B ≈ 120 Ω; A–GND e B–GND ≈ 2,5 kΩ (aba Testes)"];
+  const TEST=["Teste de dispositivos: Enter + 59 + 0 + Enter (quadrado marcado = reconhecido)","Ligar o dispositivo direto na central (barramento e alimentação) para separar defeito de cabeamento","Varredura manual do barramento (versão 3.80 ou maior): Enter + 37 + Enter"];
+  if(cat==3){
+    const n=BUS4010[k]||("Dispositivo "+k);
+    const idx=k<=4?k+4:k<=8?k+4:k+4;
+    let m=AB.slice(),s=TEST.slice();
+    if(k<=4){m=m.concat(["Receptor no A-B: jumper JP5 na posição A-B e habilitado em Enter + 517 (teclas 5 a 8)","Ao acionar um sensor, o LED do receptor deve piscar"]);}
+    if(k>=5&&k<=8){s=s.concat(["Não aciona PGM: conferir a programação da PGM do expansor"]);}
+    if(k>=9){s=s.concat(["Desde a versão 5.0 a central acusa falha do XEZ com cerca de 75% de falha de comunicação (antes, só com falha total): cabo, ruído e topologia passam a aparecer","Travamento, tamper/curto falso nas zonas ou disparo falso com oscilação de alimentação: atualizar o firmware do XEZ"]);}
+    s=s.concat(["Dispositivo removido de vez: Enter + Anular + Enter"]);
+    return {t:"Problema no "+n,sev:"warn",m:m,s:s,r:"guia unificado 4.10, 4.25 e 4.37 (índice "+idx+" no buffer de eventos); tutoriais Barramento A-B e Medidas do barramento A-B"};
+  }
+  const x=JSON.parse(JSON.stringify(d));
+  if(cat==2&&k<=4){
+    x.m=["No T1/T2: tensão no teclado 9–16 V, cabo 4 × 26 AWG até 100 m e até 10 Ω","No A-B (só XAT 4000 LCD): jumper JPR3 aberto, cabo de 6 vias no CN4 e teclado habilitado em Enter + 517 (teclas 1 a 4)"].concat(AB.slice(0,5));
+    x.s=["Teclado apagado: falta de alimentação ou cabeamento","Teclado reiniciando (piscando): A e B invertidos, cabo inadequado ou central acessada pelo AMT Remoto","Teclado bloqueado: outro teclado em programação ou acesso remoto em andamento"].concat(TEST.slice(0,2));
+  }
+  if(cat==1)x.s=x.s.map(t=>t.replace("cabo de 4 vias fonte ↔ placa (J4)","conector da fonte chaveada na placa").replace("cabo de 4 vias","conector da fonte"));
+  if(cat==1&&k==5)x.m=["Tensão na AUX com as cargas ligadas (fonte 14,5 VDC)","Corrente máxima da AUX: 1,2 A (datasheet); com ajuste de corrente, o limite segue a tabela do Enter + 56 (0,5 a 1,0 A)"];
+  if(cat==4&&k==4){
+    x.m=["Ethernet: IP local (segure a tecla 3 por 3 s), cabo de rede e servidores IP1/IP2","GPRS: chip habilitado (Enter + 832 + Enter, tecla 1 ou 2) e prioridade de comunicação (ex.: só GPRS = Enter + 191 + Enter)","Login, senha e APN da operadora (Enter + 8221 / 8231 / 8241 para o chip 1)","Nível de sinal: segure a tecla Anular (fora da programação)","Cobertura 2G no local: o módulo só trabalha em 2G (teste o chip num celular em modo só 2G)","Versão da central: segure a tecla 1 por 3 s"];
+    x.s=["APN: TIM tim.br · Claro claro.com.br · Vivo zap.vivo.com.br · Oi gprs.oi.com.br","DNS do GPRS: Enter + 8281 + 008.008.008.008 + Enter (usa o DNS da operadora)","Sinal ruim: tempo de espera da conexão GPRS 90 s ou mais (Enter + 820 + 090 + Enter)","Sem sinal: desligar rede e bateria, religar e medir de novo; testar chip de outra operadora","Chip e cobertura bons e sem conexão: atualizar o firmware da central (bootloader)","Eventos de falha de link: 1 361 (Ethernet) e 1 360 (GPRS)"];
+    x.r="guia unificado 2, 4.31 e 4.32; tutorial Resolvendo problemas com a conexão GPRS";
+  }
+  if(cat==5)x.s=x.s.filter(t=>!/Enter 51 2/.test(t));
   return x;
 }
 function detail3010(cat,k,d){
@@ -622,7 +655,7 @@ $("zleds").addEventListener("click",e=>{const b=e.target.closest(".zled");if(b&&
 function renderLcdList(){
   $("lcdlist").innerHTML=Object.keys(CATS).map(c=>{
     const ds=st.det[c]||new Set();
-    const chips=Object.entries(CATS[c].labels).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+v+"</button>").join("");
+    const chips=Object.entries(labelsOf(c)).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+v+"</button>").join("");
     return "<div class='lcdgroup'><h4>"+c+" · "+CATS[c].name+"</h4><div class='chips'>"+chips+"</div></div>";
   }).join("");
 }
@@ -639,13 +672,13 @@ function renderLcd(){
     const ls=(st.model!="lcd"&&st.step=="det"&&st.active)?(st.last&&st.last.c==st.active?st.last:{c:st.active}):(st.last&&st.cats.has(st.last.c)?st.last:{c:cs[cs.length-1]});
     const c=ls.c,ds=st.det[c]||new Set();
     const k=ls.k!=null&&ds.has(ls.k)?ls.k:(ds.size?[...ds].sort().pop():null);
-    if(k!=null){l1=CATS[c].name;l2=CATS[c].labels[k];}
+    if(k!=null){l1=CATS[c].name;l2=labelsOf(c)[k];}
     else{l1="Problema";l2=CATS[c].name;}
   }
   $("lcd1").textContent=l1;$("lcd2").textContent=l2;
 }
 
-function labelsNow(){return st.step=="cat"?Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v.name])):CATS[st.active].labels;}
+function labelsNow(){return st.step=="cat"?Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v.name])):labelsOf(st.active);}
 function setNow(){if(st.step=="cat")return st.cats;return st.det[st.active]||(st.det[st.active]=new Set());}
 
 function toggle(k){
@@ -678,6 +711,9 @@ $("model").addEventListener("click",e=>{
 });
 
 function render(){
+  const KB=curModelId()=="amt4010"?["lcd"]:["xat2000","xat3000","lcd"];
+  if(KB.indexOf(st.model)<0){st.model=KB[0];st.step="cat";st.active=null;}
+  document.querySelectorAll("#model button").forEach(b=>{b.hidden=KB.indexOf(b.dataset.m)<0;});
   document.querySelectorAll("#model button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.m==st.model));
   $("howto").innerHTML=HOWTO[st.model];
   $("st1").classList.toggle("on",st.step=="cat");
@@ -695,6 +731,7 @@ function render(){
     const n=+b.dataset.k,usable=!!L[n];
     b.classList.toggle("lit",usable&&S.has(n));b.disabled=!usable;
   });
+  $("howto").innerHTML=HOWTO[st.model]+(curModelId()=="amt4010"?" O guia da AMT 4010 descreve a exibição de problemas pelo visor do XAT 2000 LCD / XAT 4000 LCD.":"");
   const isLcd=st.model=="lcd";
   $("steps").hidden=isLcd;$("allcats").hidden=isLcd;$("legend").hidden=isLcd;
   if(isLcd){$("back").hidden=true;renderLcdList();}
@@ -742,7 +779,7 @@ const CATINFO={
   7:{what:"A fiação de uma zona está em curto-circuito.",first:"Meça a fiação da zona indicada com o sensor desligado."}
 };
 function catCard(c){
-  const ds=st.det[c]||new Set(),L=CATS[c].labels;
+  const ds=st.det[c]||new Set(),L=labelsOf(c);
   const btns=Object.entries(L).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+k+" · "+v+"</button>").join("");
   return "<article class='card info catcard'><div class='top'><h3>Categoria "+c+" · "+CATS[c].name+"</h3><span class='pill'>"+(ds.size?ds.size+" marcada"+(ds.size>1?"s":""):"Falta o detalhe")+"</span></div>"+
     "<p>"+CATINFO[c].what+"</p>"+
@@ -760,7 +797,7 @@ function renderResults(){
   $("results").innerHTML=out.length?out.join(""):"<p class='empty'>Nenhuma tecla marcada. Com o LED Problema piscando, faça o comando acima e toque nas teclas que acenderam. A orientação aparece aqui.</p>";
   const p=st.det[1]||new Set();
   let combo="";
-  if(p.has(4)&&p.has(5)&&curModelId()!="amt3010"){
+  if(p.has(4)&&p.has(5)&&curModelId()!="amt3010"&&curModelId()!="amt4010"){
     combo="<div class='note'><strong>Combinação "+(p.has(1)?"1 + ":"")+"4 + 5: leitura suspeita</strong>"+
       "<span>Quando a central acusa bateria em curto e sobrecarga juntas, mas a AC está presente e a AUX mede perto de 14,5 V, a placa está lendo errado. Nesse caso: 1) limpe as placas com álcool isopropílico; 2) reencaixe o cabo de 4 vias fonte ↔ placa (J4) e o conector da bateria; 3) teste sem bateria: se aparecer 4 mesmo assim, o defeito é da fonte ou da placa.</span></div>";
   }
@@ -808,7 +845,18 @@ const RULES3010={
   ac:v=>v<12?["crit","Muito abaixo de 16,5 VAC: transformador ou rede com problema."]:v<15?["warn","Abaixo do nominal de 16,5 VAC. Medir o primário e conferir o transformador."]:v>19.5?["warn","Acima do esperado para 16,5 VAC. Conferir o primário (127/220 V) do transformador."]:["ok","Próximo do nominal de 16,5 VAC. Em vazio, o secundário mede um pouco acima."],
   aux:v=>v<11?["crit","Baixa: sobrecarga real ou alimentação fraca. Desligar as cargas uma a uma (não o teclado)."]:v<11.8?["warn","Um pouco baixa. Conferir o consumo contra o ajuste de corrente."]:["ok","Tensão normal para a saída de 12 VDC."]
 };
+const MEAS4010=[
+  {id:"ab",label:"Barramento A–B (central desligada)",unit:"Ω",ph:"120",hint:"Resistência entre os bornes A e B, sem rede e sem bateria. Referência 120 Ω."},
+  {id:"agnd",label:"Borne A × GND (central desligada)",unit:"Ω",ph:"2500",hint:"Referência 2,5 kΩ (2500 Ω)."},
+  {id:"bgnd",label:"Borne B × GND (central desligada)",unit:"Ω",ph:"2500",hint:"Referência 2,5 kΩ (2500 Ω)."}
+];
+const RULES4010={
+  fonte:RULES.fonte,
+  ab:v=>near(v,120),agnd:v=>near(v,2500),bgnd:v=>near(v,2500)
+};
+function near(v,ref){const d=Math.abs(v-ref)/ref;return d<=0.2?["ok","Perto da referência de "+ref+" Ω."]:d<=0.5?["warn","Afastado da referência de "+ref+" Ω. Repetir a medição com a central totalmente desligada."]:["crit","Muito longe de "+ref+" Ω. O tutorial manda encaminhar o equipamento à assistência técnica Intelbras."];}
 function measList(){
+  if(curModelId()=="amt4010")return MEAS.map(m=>m.id=="fonte"?Object.assign({},m,{label:"Saída da fonte chaveada",hint:"No conector de alimentação da placa. Fonte 14,5 VDC / 1,8 A."}):m).concat(MEAS4010);
   if(curModelId()!="amt3010")return MEAS;
   return MEAS.filter(m=>m.id!="fonte").map(m=>MEAS3010[m.id]?Object.assign({},m,MEAS3010[m.id]):m);
 }
@@ -824,7 +872,7 @@ function renderMeas(){
 function verdict(id){
   const d=st.meas[id]||{},o=$("v-"+id),v=num(d.v);
   if(v==null||isNaN(v)){o.className="verdict";o.textContent="";return null;}
-  const R=(curModelId()=="amt3010"&&RULES3010[id])||RULES[id];
+  const R=(curModelId()=="amt3010"&&RULES3010[id])||(curModelId()=="amt4010"&&RULES4010[id])||RULES[id];
   const [c,t]=R(v);o.className="verdict "+c;o.textContent=t;return c;
 }
 $("meas").addEventListener("input",e=>{
@@ -847,7 +895,7 @@ function renderTests(){
     "<div class='test' data-i='"+i+"'><input class='nm' id='t-n-"+i+"' aria-label='Nome do teste' placeholder='Teste' value='"+esc(t.n)+"'>"+
     "<input class='val' id='t-v-"+i+"' aria-label='Valor ou resultado' placeholder='Valor' value='"+esc(t.v)+"'>"+statusHTML(t.s)+
     "<button type='button' class='del'>Remover</button></div>").join(""):"<p class='empty'>Nenhum teste extra. Toque numa sugestão abaixo ou em Adicionar teste.</p>";
-  const Q=curModelId()=="amt3010"?QUICK.filter(q=>!/Fusível 1,0 A|Cabo 4 vias/.test(q)).concat(["Transformador 16,5 VAC","Ajuste de corrente (Enter 56)"]):curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
+  const Q=curModelId()=="amt4010"?QUICK.filter(q=>!/Cabo 4 vias|Teste sem bateria/.test(q)).concat(["Teste de dispositivos (Enter 59 0)","Varredura do barramento (Enter 37)","Jumper de casamento (último dispositivo)","Versão da central (tecla 1 por 3 s)","IP local (tecla 3 por 3 s)","Chip / APN / sinal GPRS"]):curModelId()=="amt3010"?QUICK.filter(q=>!/Fusível 1,0 A|Cabo 4 vias/.test(q)).concat(["Transformador 16,5 VAC","Ajuste de corrente (Enter 56)"]):curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
   $("quick").innerHTML=Q.filter(q=>!st.tests.some(t=>t.n==q)).map(q=>"<button type='button' data-q='"+esc(q)+"'>+ "+q+"</button>").join("");
 }
 $("tests").addEventListener("input",e=>{
@@ -1016,6 +1064,93 @@ const REF={
       <tr><td>Receptor XAR 4000 SMART</td><td class="v">AUX ou fonte 12–15 V / 1,8 A, sem bateria</td></tr>
     </table></div>
     <p class="foot">Fonte: Manual do usuário AMT 2018 E / 2018 EG (Intelbras, doc. 11779-02). O arquivo recebido tinha a codificação corrompida e foi decodificado; alguns acentos se perderam, mas números e comandos ficaram legíveis.</p>`,
+  amt4010:`<p class="note"><span><strong>Senhas:</strong> centrais novas saem com a senha master (4 dígitos) e a de acesso remoto (6 dígitos) impressas na etiqueta QR CODE da tampa. Depois de um reset geral voltam a 1234 (master) e 878787 (acesso remoto). Instalador: 9090.</span></p>
+    <div class="tbl"><table>
+      <tr><th>Função</th><th>Comando</th></tr>
+      <tr><td>Entrar/sair da programação</td><td class="v">Enter + senha</td></tr>
+      <tr><td>Ver problemas (LCD)</td><td class="v">Segurar ▲ 3 s</td></tr>
+      <tr><td>Versão / IP local / MAC da central</td><td class="v">Segurar 1 / 3 / 6 por 3 s</td></tr>
+      <tr><td>Zonas 1–10 … 61–64</td><td class="v">1 a 7 + Enter</td></tr>
+      <tr><td>Limpar bateria fraca e barramento</td><td class="v">Enter + Anular + Enter</td></tr>
+      <tr><td>Teste de dispositivos do barramento</td><td class="v">Enter + 59 + 0 + Enter</td></tr>
+      <tr><td>Varredura manual do barramento (v3.80+): habilitar / executar</td><td class="v">Enter + 518 + Enter, tecla 5 · Enter + 37 + Enter</td></tr>
+      <tr><td>Teclados e receptores no A-B (1–4 teclados, 5–8 receptores)</td><td class="v">Enter + 517 + Enter + teclas + Enter</td></tr>
+      <tr><td>Supervisão (grupo 3): 1 corte sirene · 2 curto sirene · 3 linha tel.</td><td class="v">Enter + 51 + 3 + Enter</td></tr>
+      <tr><td>Problema gera disparo (grupo 5): 1 AUX · 2 barramento · 3 sirene · 4 linha · 5 fiação</td><td class="v">Enter + 51 + 5 + Enter</td></tr>
+      <tr><td>Ajuste de corrente sirene/AUX (0 a 3)</td><td class="v">Enter + 56 + ajuste + Enter</td></tr>
+      <tr><td>Particionamento: habilitar / zonas das partições A–D</td><td class="v">Enter + 510 + Enter, tecla 1 · Enter + 01…04 + grupo + Enter</td></tr>
+      <tr><td>Chips GPRS (1 = chip 1, 2 = chip 2)</td><td class="v">Enter + 832 + Enter + teclas + Enter</td></tr>
+      <tr><td>Login / senha / APN do chip 1</td><td class="v">Enter + 8221 / 8231 / 8241 + Enter</td></tr>
+      <tr><td>DNS do GPRS (usar o da operadora)</td><td class="v">Enter + 8281 + 008.008.008.008 + Enter</td></tr>
+      <tr><td>Tempo de espera da conexão GPRS (060–120 s)</td><td class="v">Enter + 820 + ??? + Enter</td></tr>
+      <tr><td>IP / máscara / gateway da central</td><td class="v">Enter + 8120 / 8130 / 8140 + Enter</td></tr>
+      <tr><td>Gravar senha master / instalador / acesso remoto</td><td class="v">Enter + 20 + 00 / 62 / 63 + senha + Enter</td></tr>
+      <tr><td>Reset de eventos pendentes</td><td class="v">Enter + 16 + Enter</td></tr>
+    </table></div>
+    <h3>Índices do barramento (buffer de eventos)</h3>
+    <div class="tbl"><table>
+      <tr><th>Dispositivo</th><th>Índice</th></tr>
+      <tr><td>Teclados XAT 1 a 4</td><td class="v">1 a 4</td></tr>
+      <tr><td>Receptores XAR 1 a 4</td><td class="v">5 a 8</td></tr>
+      <tr><td>Expansores de PGM XEP 1 a 4</td><td class="v">9 a 12</td></tr>
+      <tr><td>Expansores de zonas XEZ 1 a 6</td><td class="v">13 a 18</td></tr>
+    </table></div>
+    <p class="foot">Exemplo: "Problema no dispositivo do barramento 14" = XEZ 02. Ao ligar, a central (v5.0+) gera o evento 3 531 para cada dispositivo encontrado.</p>
+    <h3>Barramentos</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>T1/T2</th><th>A-B (RS485)</th></tr>
+      <tr><td>Distância máxima</td><td>100 m</td><td>1 km (sem ruído)</td></tr>
+      <tr><td>Cabo</td><td>4 × 26 AWG, até 10 Ω</td><td>Par trançado blindado 22–24 AWG, emendas soldadas</td></tr>
+      <tr><td>Topologia</td><td>Estrela</td><td>Cascata; casamento de impedância só no último</td></tr>
+      <tr><td>Teclados</td><td>XAT 2000 LCD, XAT 3000 LED, XAT 4000 LCD</td><td>Só XAT 4000 LCD (JPR3 aberto, cabo no CN4)</td></tr>
+      <tr><td>Alimentação dos dispositivos</td><td>AUX da central</td><td>AUX ou fonte 12–15 VDC a no máx. 50 cm (1,8 A por expansor, 100 mA por teclado)</td></tr>
+      <tr><td>Medição (central desligada)</td><td>—</td><td>A–B ≈ 120 Ω · A–GND e B–GND ≈ 2,5 kΩ</td></tr>
+    </table></div>
+    <h3>Jumpers no barramento A-B</h3>
+    <div class="tbl"><table>
+      <tr><th>Dispositivo</th><th>Seleção A-B</th><th>Casamento de impedância</th></tr>
+      <tr><td>XAT 4000 LCD</td><td>JPR3 aberto</td><td>JPR2</td></tr>
+      <tr><td>XAR 4000 SMART</td><td>JP5 na posição A-B</td><td>JP6</td></tr>
+      <tr><td>XEZ 4008 SMART</td><td>—</td><td>JP2</td></tr>
+    </table></div>
+    <h3>APN das operadoras</h3>
+    <div class="tbl"><table>
+      <tr><th>Operadora</th><th>Login / senha</th><th>APN</th></tr>
+      <tr><td>TIM</td><td>tim / tim</td><td class="v">tim.br</td></tr>
+      <tr><td>Claro</td><td>claro / claro</td><td class="v">claro.com.br ou generica.claro.com.br</td></tr>
+      <tr><td>Vivo</td><td>vivo / vivo</td><td class="v">zap.vivo.com.br</td></tr>
+      <tr><td>Oi</td><td>oi / oi</td><td class="v">gprs.oi.com.br</td></tr>
+    </table></div>
+    <p class="foot">O módulo GPRS (XG/XEG 4000 SMART) trabalha só em 2G.</p>
+    <h3>Senha esquecida e reset</h3>
+    <div class="tbl"><table>
+      <tr><th>Procedimento</th><th>Efeito</th></tr>
+      <tr><td>Desligar rede AC e bateria · curto nos bornes da sirene · religar <strong>só na rede AC</strong></td><td>Por 30 s a master volta a 1234 e o instalador a 9090. Trocar as senhas nesse intervalo (Enter + 20 + 00 / 62 + nova + Enter)</td></tr>
+      <tr><td>Enter + 0000 + Enter</td><td><strong>Apaga todas as configurações</strong>, menos os dispositivos sem fio e as mensagens do LCD</td></tr>
+      <tr><td>Bootloader (cabo USB A-B)</td><td>Atualiza o firmware com a central desligada e o jumper de gravação fechado. A placa da central e o módulo GPRS são atualizados separadamente</td></tr>
+    </table></div>
+    <h3>Valores de referência</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Fonte chaveada</td><td class="v">90–265 VAC · saída 14,5 VDC / 1,8 A</td></tr>
+      <tr><td>Saída AUX (datasheet)</td><td class="v">1,2 A / 14,5 VDC</td></tr>
+      <tr><td>Ajuste de corrente (Enter + 56): sirene / AUX</td><td class="v">0: 1,0/0,5 · 1: 1,0/1,0 · 2: 1,3/0,7 · 3: 1,5/0,5 A</td></tr>
+      <tr><td>Sirene com / sem bateria</td><td class="v">1 A / 400 mA</td></tr>
+      <tr><td>PGMs da placa</td><td class="v">3 × 50 mA, chaveadas no negativo</td></tr>
+      <tr><td>Resistores de zona</td><td class="v">alta 3K9 · baixa 2K2 · fim de linha 2K2 Ω</td></tr>
+      <tr><td>Cabeamento de zona</td><td class="v">até 100 Ω por zona</td></tr>
+      <tr><td>Consumo em standby</td><td class="v">2 Wh</td></tr>
+      <tr><td>Buffer de eventos</td><td class="v">256 com data e hora</td></tr>
+    </table></div>
+    <p class="foot">O datasheet dá 1,2 A na AUX e o guia traz a tabela de ajuste de corrente (máx. 1,0 A na AUX). Na dúvida, use o menor valor.</p>
+    <h3>Mudanças de firmware que afetam o diagnóstico</h3>
+    <div class="tbl"><table>
+      <tr><th>Versão</th><th>Mudança</th></tr>
+      <tr><td>3.30</td><td>Mensagens do LCD só editáveis pelo AMT Remoto; dispositivos sem fio só cadastram na programação</td></tr>
+      <tr><td>3.80</td><td>Varredura manual do barramento e opção de abrir as zonas do XEZ na falha</td></tr>
+      <tr><td>5.00</td><td>SMS removido; falha do XEZ passa a ser acusada com ~75% de falha de comunicação; eventos de keep alive (1 360 GPRS, 1 361 Ethernet) e de dispositivo no barramento (3 531)</td></tr>
+    </table></div>
+    <p class="foot">Fontes: Guia unificado AMT 4010 SmartNet (01/26); Datasheet AMT 4010 SMART NET (02/19); Informativo AMT 4010 (01/22); tutoriais Intelbras: Barramento A-B (2019), Medidas do barramento AB, Conexão GPRS (2020), Reset temporário, Bootloader e Particionamento (2020); Guia de compatibilidade Intelbras.</p>`,
   amt3010:`<p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>. Os comandos de instalador exigem a senha do instalador.</p>
     <div class="tbl"><table>
       <tr><th>Função</th><th>Comando</th></tr>
@@ -1090,6 +1225,7 @@ const BRANDS=[
   {id:"intelbras",name:"Intelbras",models:[
     {id:"amt2010",name:"AMT 2010 / 2110 / 2018",desc:"Teclados XAT 2000, XAT 3000 LED e XAT 2000/4000 LCD · manual rev. 01/22",ready:true},
     {id:"amt2018eg",name:"AMT 2018 E / 2018 EG",desc:"Centrais monitoradas com Ethernet (E) e Ethernet + GPRS (EG) · teclados XAT 2000 e XAT 2000 LCD · manual 11779-02",ready:true},
+    {id:"amt4010",name:"AMT 4010 SMART / SMART NET",desc:"Até 64 zonas · barramentos T1/T2 e A-B (RS485) · Ethernet e GPRS opcional · guia unificado 01/26 e tutoriais técnicos",ready:true},
     {id:"amt3010",name:"AMT 3010",desc:"Central monitorada · teclados XAT 2000 e XAT 2000 LCD · guia do usuário rev. 02/11",ready:true}
   ]},
   {id:"hikvision",name:"Hikvision",models:[]},
