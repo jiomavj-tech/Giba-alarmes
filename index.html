@@ -141,6 +141,7 @@ section.panel{display:flex;flex-direction:column;gap:16px}
 .catcard .chips{gap:6px}
 .catcard .chip[aria-pressed="true"]{background:var(--lit);border-color:var(--lit);color:var(--lit-ink)}
 .catcard p{font-size:14px}
+.r10{font-style:normal;font-size:12px;color:var(--warn);font-weight:600}
 .card .ref{font-size:12.5px;color:var(--muted)}
 .note{background:var(--warn-bg);color:var(--ink);border-radius:12px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
 .note strong{color:var(--warn)}
@@ -341,6 +342,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
         <div class="lcdline" id="lcd2">Toque abaixo</div>
       </div>
       <p class="devnote">Toque na mensagem que o visor mostrou. Havendo mais de um problema, o visor mostra um de cada vez: marque todos.</p>
+      <p class="devnote" id="lcd3010" hidden>Na AMT 3010: letra <strong>P</strong> no canto inferior esquerdo = central pronta para ativar (zonas fechadas); <strong>P</strong> no canto superior direito = modo de programação; letra <strong>A</strong> na linha do relógio = zona anulada.</p>
       <div class="lcdlist" id="lcdlist"></div>
       <details class="batinfo">
         <summary>Ícone de bateria do visor</summary>
@@ -411,34 +413,50 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 
   <!-- ================= COMANDOS ================= -->
   <section class="panel" id="panel-ref" hidden>
-    <p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>. Entre antes no modo de programação com a senha do instalador.</p>
-    <div class="tbl"><table>
-      <tr><th>Função</th><th>Comando</th><th>Item</th></tr>
-      <tr><td>Entrar/sair da programação</td><td class="v">Prog + 9090</td><td>5.1</td></tr>
-      <tr><td>Ver problemas</td><td class="v">F1 + F1</td><td>4.4</td></tr>
-      <tr><td>Último disparo</td><td class="v">Anular + Enter</td><td>4.7</td></tr>
-      <tr><td>Zonas por grupo (1–10, 11–20…)</td><td class="v">1 + Enter, 2 + Enter…</td><td>4.6</td></tr>
-      <tr><td>Limpar bateria fraca e barramento</td><td class="v">Enter + Anular + Enter</td><td>5.21</td></tr>
-      <tr><td>Supervisão: 1 corte sirene · 2 curto sirene · 3 linha tel.</td><td class="v">Enter + 51 3 + Enter</td><td>5.22</td></tr>
-      <tr><td>Problema gera disparo: 1 AUX · 2 barramento · 3 sirene · 4 linha · 5 fiação · 6 nenhum</td><td class="v">Enter + 51 5 + Enter</td><td>5.23</td></tr>
-      <tr><td>Funções gerais (grupos 0, 1, 2)</td><td class="v">Enter + 51 0/1/2 + Enter</td><td>5.22</td></tr>
-      <tr><td>Tempo para envio da falha de AC (01–99 min)</td><td class="v">Enter + 48 XX + Enter</td><td>5.24</td></tr>
-    </table></div>
+    <div id="refbody"></div>
 
-    <h3>Valores de referência</h3>
+    <h3>Teclados XAT (barramento T1/T2)</h3>
     <div class="tbl"><table>
       <tr><th>Item</th><th>Valor</th></tr>
-      <tr><td>Alimentação de rede</td><td class="v">90–265 V~</td></tr>
-      <tr><td>Fusível da central</td><td class="v">1,0 A</td></tr>
-      <tr><td>Fonte (placa 4260504)</td><td class="v">14,5 V / 1,8 A</td></tr>
-      <tr><td>Saída AUX, corrente máxima</td><td class="v">1,2 A</td></tr>
-      <tr><td>Sirene sem / com bateria</td><td class="v">200 mA / 1 A</td></tr>
-      <tr><td>Corte de sirene e AUX (bateria)</td><td class="v">&lt; 10 V</td></tr>
-      <tr><td>Resistor de supervisão da sirene</td><td class="v">2K2 Ω</td></tr>
-      <tr><td>Aterramento, cabo</td><td class="v">≥ 1 mm²</td></tr>
-      <tr><td>Senhas de fábrica: master / instalador</td><td class="v">1234 / 9090</td></tr>
+      <tr><td>Alimentação do teclado (na AUX da central)</td><td class="v">9 a 16 Vdc</td></tr>
+      <tr><td>Consumo XAT 3000 LED</td><td class="v">60 mA</td></tr>
+      <tr><td>Consumo XAT 2000/4000 LCD (guia rápido)</td><td class="v">100 mA</td></tr>
+      <tr><td>Consumo XAT 2000 LCD (manual e datasheet)</td><td class="v">190 mA</td></tr>
+      <tr><td>Distância máxima até a central</td><td class="v">100 m</td></tr>
+      <tr><td>Cabo do barramento</td><td class="v">4 × 26 AWG ou maior</td></tr>
+      <tr><td>Resistência total do barramento</td><td class="v">até 10 Ω</td></tr>
+      <tr><td>Topologia</td><td class="v">Estrela</td></tr>
     </table></div>
-    <p class="foot">Fontes: Manual Intelbras AMT 2010/2110/2018 (rev. 01/22), itens 3.3–3.6, 4.4–4.7, 5.21–5.24; etiqueta da placa de fonte; ABNT NBR 5410 e NR-10.</p>
+
+    <h3>Cores dos fios · XAT 2000 LCD</h3>
+    <div class="tbl"><table>
+      <tr><th>Fio</th><th>Ligação</th></tr>
+      <tr><td>Vermelho</td><td>+12 V (AUX+ da central)</td></tr>
+      <tr><td>Preto</td><td>− (AUX− da central) e comum das zonas</td></tr>
+      <tr><td>Verde</td><td>T1</td></tr>
+      <tr><td>Amarelo</td><td>T2</td></tr>
+      <tr><td>Azul</td><td>Zona Z1 do teclado</td></tr>
+      <tr><td>Branco</td><td>Zona Z2 do teclado</td></tr>
+    </table></div>
+
+    <h3>Endereço do teclado (jumper)</h3>
+    <div class="tbl"><table>
+      <tr><th>Endereço</th><th>XAT 2000 LCD v1.3.0 (CN2)</th><th>XAT 2000 LCD v2.0.0 (CN3)</th></tr>
+      <tr><td>1</td><td>Sem jumper</td><td>Jumper na posição 1</td></tr>
+      <tr><td>2</td><td>Jumper no 2 marcado</td><td>Jumper na posição 2</td></tr>
+      <tr><td>3</td><td>Jumper no 3 marcado</td><td>Jumper na posição 3</td></tr>
+      <tr><td>4</td><td>Dois jumpers</td><td>Jumper na posição 4</td></tr>
+    </table></div>
+    <p class="foot">Dois teclados com o mesmo endereço na mesma central não funcionam.</p>
+
+    <h3>Zonas dos teclados na central</h3>
+    <div class="tbl"><table>
+      <tr><th>Central</th><th>Teclado 1</th><th>Teclado 2</th><th>Teclado 3</th><th>Teclado 4</th></tr>
+      <tr><td>AMT 2010 · AMT 3010</td><td class="v">09 · 10</td><td class="v">11 · 12</td><td class="v">13 · 14</td><td class="v">15 · 16</td></tr>
+      <tr><td>AMT 2018 · 2018 E · 2018 EG</td><td class="v">09 · 10</td><td class="v">19 · 20</td><td class="v">21 · 22</td><td class="v">23 · 24</td></tr>
+    </table></div>
+    <p class="foot">Exemplo: na AMT 2010, a zona Z1 do teclado 1 aparece no visor como Zona 09. Os teclados na tampa da central não têm zonas.</p>
+    <p class="foot">Fontes dos teclados: Guia rápido XAT 3000 LED / XAT 2000 LCD / XAT 4000 LCD (01/22); Manual XAT 2000 LCD (01/24); Datasheet XAT 2000 LCD (01/20).</p>
   </section>
   </div>
 </div>
@@ -446,6 +464,12 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 <script>
 (function(){
 const MANUAL = "Manual AMT 2010/2110/2018";
+const REF2010=/Enter 51|Enter \+ Anular|1,0 A|1,2 A|14,8|90–265|J4/;
+function srcLine(d){
+  if(curModelId()=="amt3010")return "Tabela de problemas: Guia do usuário AMT 3010. Itens marcados com (ref. AMT 2010) vêm do manual da AMT 2010, "+d.r+": confirme no manual de instalação da AMT 3010.";
+  return MANUAL+", "+d.r;
+}
+function mark(x){return curModelId()=="amt3010"&&REF2010.test(x)?x+" <em class='r10'>(ref. AMT 2010)</em>":x;}
 const CATS = {
   1:{name:"Alimentação",det:{
     1:{t:"Falta de rede elétrica",sev:"crit",
@@ -501,8 +525,8 @@ function detail(cat,k){
   if(cat==2){
     const n="0"+(k>4?k-4:k);
     if(k<=4) return {t:"Problema no teclado "+n,sev:"warn",
-      m:["Fios do barramento T1/T2 até o teclado","Alimentação do teclado na AUX (+/−)","Emendas oxidadas ou soltas"],
-      s:["Refazer as conexões do teclado","Teclado removido de vez: limpar a indicação com Enter + Anular + Enter"],r:"itens 4.4 e 5.21"};
+      m:["Tensão no teclado, entre o fio vermelho (+) e o preto (−): 9 a 16 Vdc","Barramento T1 (verde) e T2 (amarelo): até 100 m, cabo 4 × 26 AWG ou maior, resistência total até 10 Ω","Endereço (jumper) do teclado "+n+": não pode repetir o de outro teclado","Emendas oxidadas ou soltas"],
+      s:["Refazer as conexões do teclado","Tensão abaixo de 9 V: verificar a AUX e a queda no cabo","Corrigir o jumper de endereço","Teclado removido de vez: limpar a indicação com Enter + Anular + Enter"],r:"itens 4.4 e 5.21; Guia XAT 3000 LED/2000/4000 LCD; Manual XAT 2000 LCD"};
     return {t:"Tamper do teclado "+n,sev:"warn",
       m:["Tampa do teclado aberta ou mal encaixada","Fixação do teclado na parede"],
       s:["Fechar e fixar o teclado corretamente"],r:"item 4.4"};
@@ -643,6 +667,7 @@ function render(){
   const isLcd=st.model=="lcd";
   $("steps").hidden=isLcd;$("allcats").hidden=isLcd;$("legend").hidden=isLcd;
   if(isLcd){$("back").hidden=true;renderLcdList();}
+  $("lcd3010").hidden=curModelId()!="amt3010";
   renderLcd();
   pad.querySelectorAll(".key").forEach(b=>{
     const k=b.dataset.k,n=+k;
@@ -667,13 +692,13 @@ function render(){
 }
 
 function card(d,catName){
-  const li=a=>a.map(x=>"<li>"+x+"</li>").join("");
+  const li=a=>a.map(x=>"<li>"+mark(x)+"</li>").join("");
   const tag={crit:"Crítico",warn:"Atenção",info:"Manutenção"}[d.sev];
   return "<article class='card "+d.sev+"'><div class='top'><h3>"+d.t+"</h3><span class='pill'>"+tag+"</span></div>"+
     "<span class='eyebrow'>"+catName+"</span>"+
     "<div><h4>O que medir / verificar</h4><ul>"+li(d.m)+"</ul></div>"+
     "<div><h4>Solução</h4><ul>"+li(d.s)+"</ul></div>"+
-    "<p class='ref'>"+MANUAL+", "+d.r+"</p></article>";
+    "<p class='ref'>"+srcLine(d)+"</p></article>";
 }
 
 const CATINFO={
@@ -730,14 +755,16 @@ const MEAS=[
   {id:"ac",label:"Rede AC no borne",unit:"V~",ph:"220",hint:"Faixa aceita pela central: 90 a 265 V."},
   {id:"fonte",label:"Saída da fonte / cabo 4 vias",unit:"V=",ph:"14,8",hint:"Vermelho × preto no conector J4. Fonte nominal 14,5 V / 1,8 A."},
   {id:"aux",label:"Saída AUX",unit:"V=",ph:"14,5",hint:"Com as cargas ligadas. Corrente máxima 1,2 A."},
-  {id:"bat",label:"Bateria nos polos",unit:"V=",ph:"12,7",hint:"Em repouso: desconectada há pelo menos 30 min."}
+  {id:"bat",label:"Bateria nos polos",unit:"V=",ph:"12,7",hint:"Em repouso: desconectada há pelo menos 30 min."},
+  {id:"tec",label:"Tensão no teclado",unit:"V=",ph:"13,5",hint:"Fio vermelho (+) × preto (−) no teclado. Faixa: 9 a 16 Vdc."}
 ];
-const QUICK=["Fusível 1,0 A","Teste de sirene","Resistor 2K2 na sirene","Teste das zonas","Tamper dos sensores","Controles remotos","Comunicação com monitoramento","Aterramento","Cabo 4 vias (J4)","Teste sem bateria"];
+const QUICK=["Fusível 1,0 A","Teste de sirene","Resistor 2K2 na sirene","Teste das zonas","Tamper dos sensores","Controles remotos","Comunicação com monitoramento","Aterramento","Cabo 4 vias (J4)","Teste sem bateria","Endereço do teclado (jumper)","Barramento T1/T2"];
 const num=v=>{v=(v||"").replace(",",".").trim();return v===""?null:parseFloat(v);};
 const RULES={
   ac:v=>v<90?["crit","Abaixo de 90 V: a central não reconhece a rede. Verificar disjuntor, tomada e cabo."]:v>265?["crit","Acima de 265 V: fora da faixa da fonte. Verificar a instalação."]:["ok","Dentro da faixa (90–265 V). Se a central acusa falta de rede, verificar fusível, cabo de 4 vias e placa."],
   fonte:v=>v<13?["crit","Baixa para uma fonte de 14,5 V: suspeitar da fonte ou de sobrecarga."]:v>15.5?["warn","Acima do esperado para 14,5 V nominal. Acompanhar a temperatura da bateria."]:["ok","Compatível com a fonte de 14,5 V nominal. A saída de potência está boa."],
   aux:v=>v<12?["crit","Baixa: sobrecarga real ou fonte fraca. Desligar as cargas uma a uma (não o teclado)."]:v<13?["warn","Um pouco baixa. Conferir o consumo total (máximo 1,2 A)."]:["ok","Tensão normal. Se a central acusa sobrecarga, a leitura é falsa: verificar conector J4 e placa."],
+  tec:v=>v<9?["crit","Abaixo de 9 V: o teclado pode falhar. Verificar a AUX e a queda de tensão no cabo."]:v>16?["crit","Acima de 16 V: fora da faixa do teclado."]:["ok","Dentro da faixa do teclado (9 a 16 Vdc)."],
   bat:v=>v>13.2?["warn","Acima do repouso de uma bateria de 12 V: ela acabou de sair da carga. Espere 30 min desconectada e meça de novo."]:v>=12.6?["ok","Bateria boa e carregada."]:v>=12?["warn","Descarregada. Deixar carregar 24 h com a rede normal e medir de novo."]:v>=10.5?["crit","Bateria fraca. Trocar por 12 V / 7 Ah selada."]:["crit","Bateria morta ou com célula em curto. Trocar."]
 };
 const statusHTML=s=>"<div class='status'><button type='button' data-s='ok' aria-pressed='"+(s=="ok")+"'>OK</button><button type='button' data-s='nok' aria-pressed='"+(s=="nok")+"'>Não OK</button></div>";
@@ -747,7 +774,7 @@ function renderMeas(){
     const d=st.meas[m.id]||{};
     return "<div class='field' data-id='"+m.id+"'><label for='m-"+m.id+"'>"+m.label+" ("+m.unit+")</label>"+
       "<input id='m-"+m.id+"' inputmode='decimal' placeholder='"+m.ph+"' value='"+esc(d.v||"")+"'>"+
-      "<span class='hint'>"+m.hint+"</span><div class='verdict' id='v-"+m.id+"'></div>"+statusHTML(d.s)+"</div>";
+      "<span class='hint'>"+m.hint+(curModelId()=="amt3010"&&/ac|fonte|aux/.test(m.id)?" Referência da AMT 2010: confirme no manual de instalação da AMT 3010.":"")+"</span><div class='verdict' id='v-"+m.id+"'></div>"+statusHTML(d.s)+"</div>";
   }).join("");
   MEAS.forEach(m=>verdict(m.id));
 }
@@ -858,20 +885,89 @@ function example(){
   return s;
 }
 function ser(){const d={};Object.assign(d,st);d.cats=[...st.cats];d.det=Object.fromEntries(Object.entries(st.det).map(([k,v])=>[k,[...v]]));return JSON.stringify(d);}
+let loadedModel="amt2010";
+function curModelId(){return (typeof nav!=="undefined"&&nav&&nav.model)||loadedModel;}
+function stKey(){return loadedModel=="amt2010"?"amt-app-v3":"amt-app-v3:"+loadedModel;}
 function load(){
-  try{const raw=localStorage.getItem("amt-app-v3");if(!raw)return null;const d=JSON.parse(raw);
+  try{const raw=localStorage.getItem(stKey());if(!raw)return null;const d=JSON.parse(raw);
     d.cats=new Set(d.cats);d.det=Object.fromEntries(Object.entries(d.det||{}).map(([k,v])=>[k,new Set(v)]));
     d.meas=d.meas||{};d.tests=d.tests||[];d.rep=d.rep||{};return d;}catch(e){return null;}
 }
-function touch(){keepTec=st.rep.tecnico||keepTec;try{localStorage.setItem("amt-app-v3",ser());}catch(e){}}
-function renderAll(){render();renderMeas();renderTests();renderForm();buildReport();}
+function touch(){keepTec=st.rep.tecnico||keepTec;try{localStorage.setItem(stKey(),ser());}catch(e){}}
+const REF={
+  amt2010:`<p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>. Entre antes no modo de programação com a senha do instalador.</p>
+    <div class="tbl"><table>
+      <tr><th>Função</th><th>Comando</th><th>Item</th></tr>
+      <tr><td>Entrar/sair da programação</td><td class="v">Prog + 9090</td><td>5.1</td></tr>
+      <tr><td>Ver problemas</td><td class="v">F1 + F1</td><td>4.4</td></tr>
+      <tr><td>Último disparo</td><td class="v">Anular + Enter</td><td>4.7</td></tr>
+      <tr><td>Zonas por grupo (1–10, 11–20…)</td><td class="v">1 + Enter, 2 + Enter…</td><td>4.6</td></tr>
+      <tr><td>Limpar bateria fraca e barramento</td><td class="v">Enter + Anular + Enter</td><td>5.21</td></tr>
+      <tr><td>Supervisão: 1 corte sirene · 2 curto sirene · 3 linha tel.</td><td class="v">Enter + 51 3 + Enter</td><td>5.22</td></tr>
+      <tr><td>Problema gera disparo: 1 AUX · 2 barramento · 3 sirene · 4 linha · 5 fiação · 6 nenhum</td><td class="v">Enter + 51 5 + Enter</td><td>5.23</td></tr>
+      <tr><td>Funções gerais (grupos 0, 1, 2)</td><td class="v">Enter + 51 0/1/2 + Enter</td><td>5.22</td></tr>
+      <tr><td>Tempo para envio da falha de AC (01–99 min)</td><td class="v">Enter + 48 XX + Enter</td><td>5.24</td></tr>
+    </table></div>
+    <h3>Valores de referência</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Alimentação de rede</td><td class="v">90–265 V~</td></tr>
+      <tr><td>Fusível da central</td><td class="v">1,0 A</td></tr>
+      <tr><td>Fonte (placa 4260504)</td><td class="v">14,5 V / 1,8 A</td></tr>
+      <tr><td>Saída AUX, corrente máxima</td><td class="v">1,2 A</td></tr>
+      <tr><td>Sirene sem / com bateria</td><td class="v">200 mA / 1 A</td></tr>
+      <tr><td>Corte de sirene e AUX (bateria)</td><td class="v">&lt; 10 V</td></tr>
+      <tr><td>Resistor de supervisão da sirene</td><td class="v">2K2 Ω</td></tr>
+      <tr><td>Aterramento, cabo</td><td class="v">≥ 1 mm²</td></tr>
+      <tr><td>Senhas de fábrica: master / instalador</td><td class="v">1234 / 9090</td></tr>
+    </table></div>
+    <p class="foot">Fontes: Manual Intelbras AMT 2010/2110/2018 (rev. 01/22), itens 3.3–3.6, 4.4–4.7, 5.21–5.24; etiqueta da placa de fonte; ABNT NBR 5410 e NR-10.</p>`,
+  amt3010:`<p class="note"><span><strong>Fonte limitada:</strong> por enquanto só o guia do usuário da AMT 3010 foi carregado. Ele não traz valores elétricos nem os comandos de instalador (supervisão, problema gera disparo). Mande o manual de instalação da AMT 3010 para completar esta aba.</span></p>
+    <p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>.</p>
+    <div class="tbl"><table>
+      <tr><th>Função</th><th>Comando</th></tr>
+      <tr><td>Entrar na programação (senha master, fábrica 1234)</td><td class="v">Enter + senha</td></tr>
+      <tr><td>Sair da programação</td><td class="v">Digitar a senha master</td></tr>
+      <tr><td>Ver problemas no XAT 2000 LCD</td><td class="v">Segurar ▲ por 3 s</td></tr>
+      <tr><td>Ver problemas no XAT 2000</td><td class="v">F1 + F1</td></tr>
+      <tr><td>Zonas de 1–10 / 11–20 / 21–30 / 31–40</td><td class="v">1 / 2 / 3 / 4 + Enter</td></tr>
+      <tr><td>Grupo com zona aberta</td><td class="v">Ativar + Enter</td></tr>
+      <tr><td>Gravar senha (00 master, 01–60 secundárias, 61 coação)</td><td class="v">Enter + 20 + NN + senha + Enter</td></tr>
+      <tr><td>Apagar senha (01–61)</td><td class="v">Enter + 20 + NN + Enter</td></tr>
+      <tr><td>Relógio</td><td class="v">Enter + 400 + hh mm ss + Enter</td></tr>
+      <tr><td>Calendário</td><td class="v">Enter + 401 + DD MM AA + Enter</td></tr>
+      <tr><td>Anular zonas na ativação (até 30 s antes)</td><td class="v">Anular + zonas (2 dígitos) + Anular + senha</td></tr>
+      <tr><td>Anular zona na programação</td><td class="v">Anular + XX + Enter</td></tr>
+      <tr><td>Cancelar anulação na programação</td><td class="v">Anular + Anular + Enter</td></tr>
+      <tr><td>Ativar modo noturno (Stay)</td><td class="v">Ativar + 1 + senha</td></tr>
+      <tr><td>Ativar/desativar só partição A / B</td><td class="v">Ativar + 1 / 2 + senha</td></tr>
+    </table></div>
+    <h3>Indicações do XAT 2000 LCD na AMT 3010</h3>
+    <div class="tbl"><table>
+      <tr><th>Indicação</th><th>Significado</th></tr>
+      <tr><td>! piscando / aceso</td><td>Problema detectado / exibindo problemas</td></tr>
+      <tr><td>P no canto inferior esquerdo</td><td>Pronta para ativar (zonas fechadas)</td></tr>
+      <tr><td>P no canto superior direito</td><td>Modo de programação</td></tr>
+      <tr><td>A na linha do relógio</td><td>Há zona anulada</td></tr>
+      <tr><td>LED abaixo do visor</td><td>Central ativada</td></tr>
+      <tr><td>Bateria: moldura piscando → cheio</td><td>&lt; 11,5 V → &gt; 13 V</td></tr>
+    </table></div>
+    <p class="foot">Fonte: Guia do usuário AMT 3010 (rev. 02/11). Os comandos de senha, relógio e calendário também conferem com o manual da AMT 2010 (itens 6.14, 6.15, 6.33 e 6.34).</p>`
+};
+function renderRef(){$("refbody").innerHTML=REF[curModelId()]||"";}
+function switchModel(id){
+  if(id==loadedModel)return;
+  loadedModel=id;st=load()||blank();st.rep.tecnico=st.rep.tecnico||keepTec;renderAll();
+}
+function renderAll(){render();renderMeas();renderTests();renderForm();renderRef();buildReport();}
 
 
 // ---------- fabricantes e modelos ----------
 // Para incluir um fabricante ou modelo novo: acrescente aqui e crie a tela do modelo.
 const BRANDS=[
   {id:"intelbras",name:"Intelbras",models:[
-    {id:"amt2010",name:"AMT 2010 / 2110 / 2018",desc:"Teclados XAT 2000, XAT 3000 LED e XAT 2000/4000 LCD · manual rev. 01/22",ready:true}
+    {id:"amt2010",name:"AMT 2010 / 2110 / 2018",desc:"Teclados XAT 2000, XAT 3000 LED e XAT 2000/4000 LCD · manual rev. 01/22",ready:true},
+    {id:"amt3010",name:"AMT 3010",desc:"Central monitorada · teclados XAT 2000 e XAT 2000 LCD · guia do usuário rev. 02/11",ready:true}
   ]},
   {id:"hikvision",name:"Hikvision",models:[]},
   {id:"jfl",name:"JFL",models:[]}
@@ -903,6 +999,7 @@ function go(brand,model,push){
   $("h1").textContent=m?"Diagnóstico "+m.name.split(" ")[0]:b?b.name:"Diagnóstico de Alarmes";
   $("sub").textContent=m?"Toque nas teclas que acenderam, registre os testes e gere o relatório do atendimento.":b?"Escolha o modelo da central.":"Escolha o fabricante da central.";
   if(b&&!m)renderModels();
+  if(m)switchModel(m.id);
   try{localStorage.setItem("app-nav",JSON.stringify(nav));}catch(e){}
   if(push!==false){try{history.pushState(nav,"");}catch(e){}}
   window.scrollTo(0,0);

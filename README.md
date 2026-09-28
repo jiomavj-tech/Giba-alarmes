@@ -2,7 +2,7 @@
 
 App de campo (PWA) para diagnóstico de centrais de alarme, organizado por fabricante e modelo.
 
-- **Intelbras:** AMT 2010 / 2110 / 2018
+- **Intelbras:** AMT 2010 / 2110 / 2018 e AMT 3010
 - **Hikvision:** em breve
 - **JFL:** em breve
 
