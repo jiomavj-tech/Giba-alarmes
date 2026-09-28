@@ -219,6 +219,37 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 .model[aria-disabled="true"] .mn{color:var(--muted)}
 .model[aria-disabled="true"] .ar{color:var(--muted);font-size:12px}
 .brand:focus-visible,.model:focus-visible,.crumbs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* XAT 3000 LED */
+.dev3000{flex-direction:column;align-items:stretch}
+.panel3000{background:#161B21;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.icons3000{display:flex;flex-wrap:wrap;gap:6px 14px;font:600 13px var(--mono);color:#8A96A3}
+.icons3000 .ic{display:flex;align-items:center;gap:6px}
+.icons3000 .ic.on{color:#E4E9EF}
+.zleds{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.zled{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:0;color:#8A96A3;font:600 13px var(--mono);cursor:pointer;padding:4px 0;border-radius:8px}
+.zled i{width:16px;height:16px;border-radius:50%;background:#2A2F35;border:1px solid #3A424B;display:block}
+.zled.lit i{background:var(--lit);border-color:var(--lit);box-shadow:0 0 10px var(--lit-glow)}
+.zled.lit{color:#E4E9EF}
+.zled[disabled]{cursor:default;opacity:.45}
+.zled:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel3000 .devnote{color:#8A96A3}
+.pad3000{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.pad3000 span{background:var(--key);color:var(--key-ink);border-radius:7px;text-align:center;padding:7px 0;font:600 14px var(--display);opacity:.6}
+.devnote{font-size:13px;color:var(--muted);margin:0}
+/* LCD */
+.devlcd{flex-direction:column;align-items:stretch}
+.lcd{background:#9DB36B;color:#1D2610;border-radius:10px;padding:10px 14px 12px;border:6px solid #2A3138;box-shadow:inset 0 2px 8px rgba(0,0,0,.25);font-family:var(--mono)}
+.lcdicons{display:flex;gap:10px;align-items:center;font:600 13px var(--mono);margin-bottom:6px}
+.lcdicons .off{opacity:.18}
+.lcdicons .blinkc{animation:blink 1s steps(2,start) infinite}
+@media (prefers-reduced-motion:reduce){.lcdicons .blinkc{animation:none}}
+.lcdicons .bat{margin-left:auto;display:flex;gap:2px;border:2px solid #1D2610;border-radius:3px;padding:2px;position:relative}
+.lcdicons .bat::after{content:"";position:absolute;right:-5px;top:4px;width:3px;height:6px;background:#1D2610}
+.lcdicons .bat i{width:7px;height:8px;background:#1D2610;display:block}
+.lcdline{font:500 17px/1.35 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em}
+.batinfo summary{cursor:pointer;font-weight:600;font-size:14px;padding:4px 0}
+.batinfo{display:flex;flex-direction:column;gap:8px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
 </head>
@@ -265,7 +296,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
     </div>
     <p class="prompt" id="prompt"></p>
 
-    <div class="device">
+    <div class="device" id="dev-xat2000">
       <div class="pad" id="pad"></div>
       <div class="leds" aria-hidden="true">
         <span><i class="led"></i>ambiente A</span>
@@ -273,6 +304,51 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
         <span><i class="led"></i>cerca</span>
         <span><i class="led blink"></i>problema</span>
       </div>
+    </div>
+
+    <div class="device dev3000" id="dev-xat3000" hidden>
+      <div class="panel3000">
+        <div class="icons3000" aria-hidden="true">
+          <span class="ic on"><i class="led blink"></i>!</span>
+          <span class="ic"><i class="led"></i>Sirene</span>
+          <span class="ic"><i class="led"></i>P</span>
+          <span class="ic"><i class="led"></i>10+</span>
+          <span class="ic"><i class="led"></i>BYP</span>
+        </div>
+        <div class="icons3000 parts" aria-hidden="true">
+          <span class="ic"><i class="led"></i>A</span><span class="ic"><i class="led"></i>B</span><span class="ic"><i class="led"></i>C</span><span class="ic"><i class="led"></i>D</span>
+        </div>
+        <div class="zleds" id="zleds" aria-label="LEDs numéricos"></div>
+        <p class="devnote">Toque nos LEDs numéricos que acenderam.</p>
+      </div>
+      <div class="pad3000" aria-hidden="true">
+        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>▲</span><span>0</span><span>Enter</span>
+      </div>
+    </div>
+
+    <div class="device devlcd" id="dev-lcd" hidden>
+      <div class="lcd" aria-live="polite">
+        <div class="lcdicons" aria-hidden="true">
+          <span>A</span><span>B</span><span class="off">C</span><span class="off">D</span>
+          <span class="blinkc">!</span><span class="off">P</span>
+          <span class="bat"><i></i><i></i><i></i></span>
+        </div>
+        <div class="lcdline" id="lcd1">Problema</div>
+        <div class="lcdline" id="lcd2">Toque abaixo</div>
+      </div>
+      <p class="devnote">Toque na lista abaixo o problema que o visor mostrou. Havendo mais de um, o visor mostra um de cada vez.</p>
+      <details class="batinfo">
+        <summary>Ícone de bateria do visor</summary>
+        <div class="tbl"><table>
+          <tr><th>Ícone</th><th>Tensão da bateria</th></tr>
+          <tr><td>Moldura piscando</td><td class="v">&lt; 11,5 V</td></tr>
+          <tr><td>Moldura acesa</td><td class="v">11,5–12,25 V</td></tr>
+          <tr><td>1º quadrado aceso</td><td class="v">12,25–12,5 V</td></tr>
+          <tr><td>2º quadrado aceso</td><td class="v">12,5–13 V</td></tr>
+          <tr><td>Completamente aceso</td><td class="v">&gt; 13 V</td></tr>
+        </table></div>
+        <p class="ref">Manual AMT 2010/2110/2018, item 4.1</p>
+      </details>
     </div>
 
     <div id="combo"></div>
@@ -449,8 +525,13 @@ function detail(cat,k){
 
 const HOWTO={
   xat2000:"Pressione <span class='cmd'>F1</span> + <span class='cmd'>F1</span>. A tecla acesa é a categoria. Depois digite o número + <span class='cmd'>Enter</span> para ver o detalhe. A tela dura 1 minuto.",
-  xat3000:"Pressione <span class='cmd'>▲</span> duas vezes. Os LEDs numéricos indicam a categoria; depois número + <span class='cmd'>Enter</span>.",
-  lcd:"Segure <span class='cmd'>▲</span> por 3 segundos. O visor mostra o problema por escrito; use as mesmas categorias abaixo se quiser a orientação."
+  xat3000:"Pressione <span class='cmd'>▲</span> duas vezes. Os LEDs numéricos indicam a categoria; depois digite o número + <span class='cmd'>Enter</span> para ver o detalhe. Neste teclado, <span class='cmd'>▲</span> substitui o F1 e <span class='cmd'>Enter</span> substitui o Prog.",
+  lcd:"Segure <span class='cmd'>▲</span> por 3 segundos. O ícone <span class='cmd'>!</span> fica aceso e o visor mostra o problema por escrito, um de cada vez."
+};
+const PROMPT={
+  xat2000:["Depois do <span class='cmd'>F1 + F1</span>, toque nas teclas que acenderam.","Digite <span class='cmd'>{c} + Enter</span> no teclado e toque nas teclas que acenderam."],
+  xat3000:["Depois do <span class='cmd'>▲ ▲</span>, toque nos LEDs numéricos que acenderam.","Digite <span class='cmd'>{c} + Enter</span> no teclado e toque nos LEDs que acenderam."],
+  lcd:["Depois de segurar <span class='cmd'>▲</span>, toque na lista o tipo de problema que o visor mostrou.","Toque na lista o problema que o visor mostrou."]
 };
 const PAD=[
   {k:"F1",cls:"side f1"},{k:"1"},{k:"2"},{k:"3"},{k:"Apagar",cls:"side apagar"},
@@ -471,12 +552,33 @@ PAD.forEach(p=>{
   pad.appendChild(b);
 });
 
+// LEDs numéricos do XAT 3000 (1 a 0)
+[1,2,3,4,5,6,7,8,9,0].forEach(n=>{
+  const b=document.createElement("button");
+  b.className="zled";b.dataset.k=n;b.innerHTML="<i></i>"+n;b.setAttribute("aria-label","LED "+n);
+  $("zleds").appendChild(b);
+});
+$("zleds").addEventListener("click",e=>{const b=e.target.closest(".zled");if(b&&!b.disabled)toggle(+b.dataset.k);});
+function renderLcd(){
+  let l1="Sem problemas",l2="marcados";
+  const cs=[...st.cats].sort();
+  if(cs.length){
+    const ls=st.last&&st.cats.has(st.last.c)?st.last:{c:cs[cs.length-1]};
+    const c=ls.c,ds=st.det[c]||new Set();
+    const k=ls.k!=null&&ds.has(ls.k)?ls.k:(ds.size?[...ds].sort().pop():null);
+    if(k!=null){l1=CATS[c].name;l2=CATS[c].labels[k];}
+    else{l1="Problema";l2=CATS[c].name;}
+  }
+  $("lcd1").textContent=l1;$("lcd2").textContent=l2;
+}
+
 function labelsNow(){return st.step=="cat"?Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v.name])):CATS[st.active].labels;}
 function setNow(){if(st.step=="cat")return st.cats;return st.det[st.active]||(st.det[st.active]=new Set());}
 
 function toggle(k){
   const L=labelsNow();if(!L[k])return;
   const s=setNow();s.has(k)?s.delete(k):s.add(k);
+  st.last=st.step=="cat"?{c:k}:{c:st.active,k:k};
   if(st.step=="cat"&&!s.has(k))delete st.det[k];
   render();
 }
@@ -508,11 +610,18 @@ function render(){
   $("st2").classList.toggle("on",st.step=="det");
   $("back").hidden=st.step=="cat";
   const L=labelsNow(),S=setNow();
+  const P=PROMPT[st.model]||PROMPT.xat2000;
   if(st.step=="cat"){
-    $("prompt").innerHTML="Depois do <span class='cmd'>F1 + F1</span>, toque nas teclas que acenderam.";
+    $("prompt").innerHTML=P[0];
   }else{
-    $("prompt").innerHTML="Categoria <strong>"+st.active+" · "+CATS[st.active].name+"</strong>. Digite <span class='cmd'>"+st.active+" + Enter</span> no teclado e toque nas teclas que acenderam.";
+    $("prompt").innerHTML="Categoria <strong>"+st.active+" · "+CATS[st.active].name+"</strong>. "+P[1].replace("{c}",st.active);
   }
+  ["xat2000","xat3000","lcd"].forEach(m=>{$("dev-"+m).hidden=m!=st.model;});
+  $("zleds").querySelectorAll(".zled").forEach(b=>{
+    const n=+b.dataset.k,usable=!!L[n];
+    b.classList.toggle("lit",usable&&S.has(n));b.disabled=!usable;
+  });
+  renderLcd();
   pad.querySelectorAll(".key").forEach(b=>{
     const k=b.dataset.k,n=+k;
     const usable=/^[1-8]$/.test(k)&&L[n];
@@ -582,7 +691,7 @@ function renderResults(){
 $("results").addEventListener("click",e=>{
   const b=e.target.closest("[data-cat]");if(!b)return;
   const c=+b.dataset.cat,k=+b.dataset.k,ds=st.det[c]||(st.det[c]=new Set());
-  ds.has(k)?ds.delete(k):ds.add(k);render();
+  ds.has(k)?ds.delete(k):ds.add(k);st.last={c:c,k:k};render();
 });
 $("legend").addEventListener("keydown",e=>{const g=e.target.closest("[data-go]");if(g&&(e.key=="Enter"||e.key==" ")){e.preventDefault();openCat(+g.dataset.go);}});
 
