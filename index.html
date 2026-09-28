@@ -467,10 +467,10 @@ const MANUAL = "Manual AMT 2010/2110/2018";
 const REF2010=/Enter 51|Enter \+ Anular|1,0 A|1,2 A|14,8|90–265|J4/;
 function srcLine(d){
   if(curModelId()=="amt2018eg")return "Manual AMT 2018 E / 2018 EG (doc. 11779-02). Equivale ao manual AMT 2010, "+d.r+".";
-  if(curModelId()=="amt3010")return "Tabela de problemas: Guia do usuário AMT 3010. Itens marcados com (ref. AMT 2010) vêm do manual da AMT 2010, "+d.r+": confirme no manual de instalação da AMT 3010.";
+  if(curModelId()=="amt3010")return "Manual AMT 3010 (rev. 01/17) e guia de instalação (01/17). Mesmos comandos da AMT 2010 ("+d.r+" naquele manual).";
   return MANUAL+", "+d.r;
 }
-function mark(x){return curModelId()=="amt3010"&&REF2010.test(x)?x+" <em class='r10'>(ref. AMT 2010)</em>":x;}
+function mark(x){return x;}
 const CATS = {
   1:{name:"Alimentação",det:{
     1:{t:"Falta de rede elétrica",sev:"crit",
@@ -522,6 +522,7 @@ for(let z=1;z<=8;z++){CATS[6].labels[z]="Zona "+z;CATS[7].labels[z]="Zona "+z;}
 
 function detail(cat,k){
   const d=detailBase(cat,k);
+  if(curModelId()=="amt3010"&&d)return detail3010(cat,k,d);
   if(curModelId()!="amt2018eg"||!d)return d;
   const x=JSON.parse(JSON.stringify(d));
   if(cat==4&&k==4){
@@ -529,6 +530,24 @@ function detail(cat,k){
     x.s=x.s.concat(["Ethernet: conferir cabo de rede, IP da central e servidores IP1/IP2 programados","GPRS (só EG): conferir chip, antena e LEDs LD1/LD2 (chip em uso) e LD3 (rede da operadora) na placa expansora"]);
   }
   if(cat==5)x.m=x.m.concat(["Na AMT 2018 E/EG: tecla 3 vale para as zonas 25 a 30 e tecla 5 para as zonas 41 a 48"]);
+  return x;
+}
+function detail3010(cat,k,d){
+  const x=JSON.parse(JSON.stringify(d));
+  const AJ="Ajuste de corrente (Enter + 56 + ajuste + Enter): 0 = sirene 1,0 A / AUX 0,5 A · 1 = 1,0 / 1,0 A · 2 = 1,3 / 0,7 A · 3 = 1,5 / 0,5 A";
+  if(cat==1&&k==1){
+    x.m=["Tensão AC nos bornes de alimentação da central: 16,5 VAC (secundário do transformador)","Primário do transformador: tensão da rede, disjuntor e tomada","Transformador recomendado: 16,5 VAC / 2,0 A","Aterramento ligado no terminal de terra da central"];
+    x.s=["Sem 16,5 VAC com a rede presente: transformador com defeito (medir primário e secundário)","Secundário normal e a central acusa falta de rede: conferir bornes e a placa","Tempo para gerar o evento de falha de AC: Enter + 48 + XX + Enter (01–99 min)"];
+  }
+  if(cat==1&&k==5){
+    x.m=["Tensão na AUX com as cargas ligadas (nominal 12 VDC)","Corrente total da AUX dentro do ajuste programado",AJ];
+    x.s=["Somar o consumo das cargas da AUX e comparar com o ajuste","Aumentar o ajuste da AUX se a sirene permitir, ou reduzir as cargas","Tensão caindo: desligar as cargas uma a uma (não o teclado) até achar a que está em curto","Com a central ativada, esta falha dispara a sirene (Enter 51 5, tecla 1)"];
+  }
+  if(cat==1&&k==4)x.s=x.s.map(t=>t.replace("(cabo de 4 vias, sujeira ou placa)","(sujeira, conectores ou placa)"));
+  if(cat==4&&(k==1||k==2)){
+    x.m=x.m.concat(["Corrente da sirene dentro do ajuste programado. "+AJ]);
+    x.s=x.s.map(t=>t.replace("Instalar o resistor de 2K2 Ω na sirene","Instalar o resistor de 2K2 Ω (vem com a central) junto da sirene"));
+  }
   return x;
 }
 function detailBase(cat,k){
@@ -741,7 +760,7 @@ function renderResults(){
   $("results").innerHTML=out.length?out.join(""):"<p class='empty'>Nenhuma tecla marcada. Com o LED Problema piscando, faça o comando acima e toque nas teclas que acenderam. A orientação aparece aqui.</p>";
   const p=st.det[1]||new Set();
   let combo="";
-  if(p.has(4)&&p.has(5)){
+  if(p.has(4)&&p.has(5)&&curModelId()!="amt3010"){
     combo="<div class='note'><strong>Combinação "+(p.has(1)?"1 + ":"")+"4 + 5: leitura suspeita</strong>"+
       "<span>Quando a central acusa bateria em curto e sobrecarga juntas, mas a AC está presente e a AUX mede perto de 14,5 V, a placa está lendo errado. Nesse caso: 1) limpe as placas com álcool isopropílico; 2) reencaixe o cabo de 4 vias fonte ↔ placa (J4) e o conector da bateria; 3) teste sem bateria: se aparecer 4 mesmo assim, o defeito é da fonte ou da placa.</span></div>";
   }
@@ -781,19 +800,32 @@ const RULES={
 };
 const statusHTML=s=>"<div class='status'><button type='button' data-s='ok' aria-pressed='"+(s=="ok")+"'>OK</button><button type='button' data-s='nok' aria-pressed='"+(s=="nok")+"'>Não OK</button></div>";
 
+const MEAS3010={
+  ac:{label:"Tensão AC do transformador",unit:"V~",ph:"16,5",hint:"Nos bornes de alimentação da central. Nominal 16,5 VAC (transformador 16,5 VAC / 2,0 A)."},
+  aux:{label:"Saída AUX",unit:"V=",ph:"12,5",hint:"Com as cargas ligadas. Nominal 12 VDC; corrente máxima conforme o ajuste (Enter + 56)."}
+};
+const RULES3010={
+  ac:v=>v<12?["crit","Muito abaixo de 16,5 VAC: transformador ou rede com problema."]:v<15?["warn","Abaixo do nominal de 16,5 VAC. Medir o primário e conferir o transformador."]:v>19.5?["warn","Acima do esperado para 16,5 VAC. Conferir o primário (127/220 V) do transformador."]:["ok","Próximo do nominal de 16,5 VAC. Em vazio, o secundário mede um pouco acima."],
+  aux:v=>v<11?["crit","Baixa: sobrecarga real ou alimentação fraca. Desligar as cargas uma a uma (não o teclado)."]:v<11.8?["warn","Um pouco baixa. Conferir o consumo contra o ajuste de corrente."]:["ok","Tensão normal para a saída de 12 VDC."]
+};
+function measList(){
+  if(curModelId()!="amt3010")return MEAS;
+  return MEAS.filter(m=>m.id!="fonte").map(m=>MEAS3010[m.id]?Object.assign({},m,MEAS3010[m.id]):m);
+}
 function renderMeas(){
-  $("meas").innerHTML=MEAS.map(m=>{
+  $("meas").innerHTML=measList().map(m=>{
     const d=st.meas[m.id]||{};
     return "<div class='field' data-id='"+m.id+"'><label for='m-"+m.id+"'>"+m.label+" ("+m.unit+")</label>"+
       "<input id='m-"+m.id+"' inputmode='decimal' placeholder='"+m.ph+"' value='"+esc(d.v||"")+"'>"+
-      "<span class='hint'>"+m.hint+(curModelId()=="amt3010"&&/ac|fonte|aux/.test(m.id)?" Referência da AMT 2010: confirme no manual de instalação da AMT 3010.":"")+"</span><div class='verdict' id='v-"+m.id+"'></div>"+statusHTML(d.s)+"</div>";
+      "<span class='hint'>"+m.hint+"</span><div class='verdict' id='v-"+m.id+"'></div>"+statusHTML(d.s)+"</div>";
   }).join("");
-  MEAS.forEach(m=>verdict(m.id));
+  measList().forEach(m=>verdict(m.id));
 }
 function verdict(id){
   const d=st.meas[id]||{},o=$("v-"+id),v=num(d.v);
   if(v==null||isNaN(v)){o.className="verdict";o.textContent="";return null;}
-  const [c,t]=RULES[id](v);o.className="verdict "+c;o.textContent=t;return c;
+  const R=(curModelId()=="amt3010"&&RULES3010[id])||RULES[id];
+  const [c,t]=R(v);o.className="verdict "+c;o.textContent=t;return c;
 }
 $("meas").addEventListener("input",e=>{
   const f=e.target.closest(".field");if(!f)return;const id=f.dataset.id;
@@ -815,7 +847,7 @@ function renderTests(){
     "<div class='test' data-i='"+i+"'><input class='nm' id='t-n-"+i+"' aria-label='Nome do teste' placeholder='Teste' value='"+esc(t.n)+"'>"+
     "<input class='val' id='t-v-"+i+"' aria-label='Valor ou resultado' placeholder='Valor' value='"+esc(t.v)+"'>"+statusHTML(t.s)+
     "<button type='button' class='del'>Remover</button></div>").join(""):"<p class='empty'>Nenhum teste extra. Toque numa sugestão abaixo ou em Adicionar teste.</p>";
-  const Q=curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
+  const Q=curModelId()=="amt3010"?QUICK.filter(q=>!/Fusível 1,0 A|Cabo 4 vias/.test(q)).concat(["Transformador 16,5 VAC","Ajuste de corrente (Enter 56)"]):curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
   $("quick").innerHTML=Q.filter(q=>!st.tests.some(t=>t.n==q)).map(q=>"<button type='button' data-q='"+esc(q)+"'>+ "+q+"</button>").join("");
 }
 $("tests").addEventListener("input",e=>{
@@ -856,7 +888,7 @@ function buildReport(){
   });
   if(probs.length){L.push("");L.push("FALHAS INDICADAS PELA CENTRAL");L.push(...probs);}
   const tl=[];
-  MEAS.forEach(m=>{const d=st.meas[m.id];if(d&&(d.v||d.s))tl.push("- "+m.label+": "+(d.v?d.v.trim()+" "+m.unit:"—")+(d.s?" ["+ST[d.s]+"]":""));});
+  measList().forEach(m=>{const d=st.meas[m.id];if(d&&(d.v||d.s))tl.push("- "+m.label+": "+(d.v?d.v.trim()+" "+m.unit:"—")+(d.s?" ["+ST[d.s]+"]":""));});
   st.tests.forEach(t=>{if(t.n||t.v)tl.push("- "+(t.n||"Teste")+": "+(t.v||"—")+(t.s?" ["+ST[t.s]+"]":""));});
   if(tl.length){L.push("");L.push("TESTES E MEDIÇÕES");L.push(...tl);}
   [["DIAGNÓSTICO",r.diag],["SERVIÇOS REALIZADOS",r.serv],["RECOMENDAÇÕES",r.recom]].forEach(([h,v])=>{if(v&&v.trim()){L.push("");L.push(h);L.push(v.trim());}});
@@ -984,25 +1016,54 @@ const REF={
       <tr><td>Receptor XAR 4000 SMART</td><td class="v">AUX ou fonte 12–15 V / 1,8 A, sem bateria</td></tr>
     </table></div>
     <p class="foot">Fonte: Manual do usuário AMT 2018 E / 2018 EG (Intelbras, doc. 11779-02). O arquivo recebido tinha a codificação corrompida e foi decodificado; alguns acentos se perderam, mas números e comandos ficaram legíveis.</p>`,
-  amt3010:`<p class="note"><span><strong>Fonte limitada:</strong> por enquanto só o guia do usuário da AMT 3010 foi carregado. Ele não traz valores elétricos nem os comandos de instalador (supervisão, problema gera disparo). Mande o manual de instalação da AMT 3010 para completar esta aba.</span></p>
-    <p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>.</p>
+  amt3010:`<p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>. Os comandos de instalador exigem a senha do instalador.</p>
     <div class="tbl"><table>
       <tr><th>Função</th><th>Comando</th></tr>
-      <tr><td>Entrar na programação (senha master, fábrica 1234)</td><td class="v">Enter + senha</td></tr>
-      <tr><td>Sair da programação</td><td class="v">Digitar a senha master</td></tr>
-      <tr><td>Ver problemas no XAT 2000 LCD</td><td class="v">Segurar ▲ por 3 s</td></tr>
-      <tr><td>Ver problemas no XAT 2000</td><td class="v">F1 + F1</td></tr>
+      <tr><td>Entrar/sair da programação (instalador 9090, master 1234)</td><td class="v">Enter + senha</td></tr>
+      <tr><td>Ver problemas</td><td class="v">F1 + F1 · LCD: segurar ▲ 3 s</td></tr>
+      <tr><td>Último disparo</td><td class="v">Anular + Enter</td></tr>
       <tr><td>Zonas de 1–10 / 11–20 / 21–30 / 31–40</td><td class="v">1 / 2 / 3 / 4 + Enter</td></tr>
       <tr><td>Grupo com zona aberta</td><td class="v">Ativar + Enter</td></tr>
+      <tr><td>Limpar bateria fraca e barramento</td><td class="v">Enter + Anular + Enter</td></tr>
+      <tr><td>Supervisão: 1 corte sirene · 2 curto sirene · 3 linha tel.</td><td class="v">Enter + 51 3 + Enter</td></tr>
+      <tr><td>Problema gera disparo: 1 AUX · 2 barramento · 3 sirene · 4 linha · 5 fiação · 6 nenhum</td><td class="v">Enter + 51 5 + Enter</td></tr>
+      <tr><td>Funções gerais (grupos 0, 1, 2)</td><td class="v">Enter + 51 0/1/2 + Enter</td></tr>
+      <tr><td>Ajuste de corrente sirene/AUX (0 a 3)</td><td class="v">Enter + 56 + ajuste + Enter</td></tr>
+      <tr><td>Tempo para envio da falha de AC (01–99 min)</td><td class="v">Enter + 48 XX + Enter</td></tr>
       <tr><td>Gravar senha (00 master, 01–60 secundárias, 61 coação)</td><td class="v">Enter + 20 + NN + senha + Enter</td></tr>
       <tr><td>Apagar senha (01–61)</td><td class="v">Enter + 20 + NN + Enter</td></tr>
-      <tr><td>Relógio</td><td class="v">Enter + 400 + hh mm ss + Enter</td></tr>
-      <tr><td>Calendário</td><td class="v">Enter + 401 + DD MM AA + Enter</td></tr>
+      <tr><td>Relógio / calendário</td><td class="v">Enter + 400 hhmmss / 401 DDMMAA + Enter</td></tr>
       <tr><td>Anular zonas na ativação (até 30 s antes)</td><td class="v">Anular + zonas (2 dígitos) + Anular + senha</td></tr>
-      <tr><td>Anular zona na programação</td><td class="v">Anular + XX + Enter</td></tr>
-      <tr><td>Cancelar anulação na programação</td><td class="v">Anular + Anular + Enter</td></tr>
-      <tr><td>Ativar modo noturno (Stay)</td><td class="v">Ativar + 1 + senha</td></tr>
-      <tr><td>Ativar/desativar só partição A / B</td><td class="v">Ativar + 1 / 2 + senha</td></tr>
+      <tr><td>Anular / cancelar anulação na programação</td><td class="v">Anular + XX + Enter · Anular + Anular + Enter</td></tr>
+      <tr><td>Ativar modo noturno (Stay) · só partição A / B</td><td class="v">Ativar + 1 + senha · Ativar + 1 / 2 + senha</td></tr>
+    </table></div>
+    <h3>Senha esquecida</h3>
+    <div class="tbl"><table>
+      <tr><th>Procedimento</th><th>Efeito</th></tr>
+      <tr><td>Desligar rede AC e bateria · curto nos bornes da sirene · religar</td><td>Por 30 s a master volta a 1234 e o instalador a 9090, sem apagar a programação</td></tr>
+      <tr><td>Enter + 0000 + Enter (na programação)</td><td><strong>Apaga toda a programação</strong> e as senhas secundárias. Bloqueado se o Bloqueio de Reset estiver ativo</td></tr>
+    </table></div>
+    <h3>Ajuste de corrente (Enter + 56)</h3>
+    <div class="tbl"><table>
+      <tr><th>Ajuste</th><th>Sirene</th><th>AUX</th></tr>
+      <tr><td>0</td><td class="v">1,0 A</td><td class="v">0,5 A</td></tr>
+      <tr><td>1</td><td class="v">1,0 A</td><td class="v">1,0 A</td></tr>
+      <tr><td>2</td><td class="v">1,3 A</td><td class="v">0,7 A</td></tr>
+      <tr><td>3</td><td class="v">1,5 A</td><td class="v">0,5 A</td></tr>
+    </table></div>
+    <h3>Valores de referência</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Alimentação AC (secundário do transformador)</td><td class="v">16,5 VAC</td></tr>
+      <tr><td>Transformador recomendado</td><td class="v">16,5 VAC / 2,0 A</td></tr>
+      <tr><td>Saída AUX</td><td class="v">12 VDC, até 1,0 A (ajuste)</td></tr>
+      <tr><td>Saída de sirene</td><td class="v">até 1,5 A (ajuste)</td></tr>
+      <tr><td>Bateria</td><td class="v">12 V / 7 Ah</td></tr>
+      <tr><td>Consumo médio (com teclado)</td><td class="v">7 W</td></tr>
+      <tr><td>Corte de sirene e AUX (bateria)</td><td class="v">&lt; 10 V</td></tr>
+      <tr><td>Resistor da sirene (vem com a central)</td><td class="v">2K2 Ω junto da sirene</td></tr>
+      <tr><td>Fiação das zonas</td><td class="v">4 × 26 AWG, até 100 m, até 10 Ω</td></tr>
+      <tr><td>Zona dupla: Z1 / Z2 / Z3 / Z4</td><td class="v">zonas 5 / 6 / 7 / 8</td></tr>
     </table></div>
     <h3>Indicações do XAT 2000 LCD na AMT 3010</h3>
     <div class="tbl"><table>
@@ -1012,9 +1073,8 @@ const REF={
       <tr><td>P no canto superior direito</td><td>Modo de programação</td></tr>
       <tr><td>A na linha do relógio</td><td>Há zona anulada</td></tr>
       <tr><td>LED abaixo do visor</td><td>Central ativada</td></tr>
-      <tr><td>Bateria: moldura piscando → cheio</td><td>&lt; 11,5 V → &gt; 13 V</td></tr>
     </table></div>
-    <p class="foot">Fonte: Guia do usuário AMT 3010 (rev. 02/11). Os comandos de senha, relógio e calendário também conferem com o manual da AMT 2010 (itens 6.14, 6.15, 6.33 e 6.34).</p>`
+    <p class="foot">Fontes: Manual AMT 3010 (rev. 01/17), Guia de instalação AMT 3010 (01/17) e Guia do usuário AMT 3010 (02/11). Programação por computador: AMT Remoto, versão 6.0.9.49 (30/07/2024).</p>`
 };
 function renderRef(){$("refbody").innerHTML=REF[curModelId()]||"";}
 function switchModel(id){

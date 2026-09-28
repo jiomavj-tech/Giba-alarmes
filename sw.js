@@ -1,6 +1,6 @@
 // Guarda o app no celular para funcionar sem internet.
 // A página principal busca primeiro a versão nova na internet; sem sinal, usa a cópia guardada.
-const CACHE = "diag-amt-v7";
+const CACHE = "diag-amt-v8";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-180.png"];
 
 self.addEventListener("install", e => {
