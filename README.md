@@ -11,4 +11,4 @@ Funciona offline depois do primeiro acesso e pode ser instalado na tela inicial 
 
 Referências: manuais dos fabricantes, ABNT NBR 5410 e NR-10.
 
-![Giba Alarmes](logo/giba-alarmes-logo.png)
+![Giba Alarmes](logo/giba-alarmes-completo.png)

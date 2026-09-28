@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080"><style>@font-face{font-family:"RussoG";src:url(russo.ttf)}@font-face{font-family:"MichromaG";src:url(michroma.ttf)}</style>
   <rect width="1080" height="1080" fill="#050708"/>
-  <g transform="translate(540 580) scale(.98)">
+  <g transform="translate(540 440) scale(.78)">
   <defs>
     <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1A8"/><stop offset=".35" stop-color="#F2C230"/><stop offset=".7" stop-color="#B8860B"/><stop offset="1" stop-color="#F5D25A"/></linearGradient>
     <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#C9D1D9"/><stop offset=".55" stop-color="#7E8A96"/><stop offset="1" stop-color="#E6EBF0"/></linearGradient>
@@ -37,4 +37,14 @@
       <path d="M-55,-50 A80,80 0 0 0 -55,40" opacity=".9"/><path d="M-85,-78 A120,120 0 0 0 -85,68" opacity=".6"/>
     </g>
   </g></g>
+  <text x="540" y="818" text-anchor="middle" font-family="MichromaG" font-size="150" fill="none" stroke="#1B2128" stroke-width="22" stroke-linejoin="round" letter-spacing="4">GIBA</text>
+  <text x="540" y="818" text-anchor="middle" font-family="MichromaG" font-size="150" fill="url(#silver)" stroke="url(#silver)" stroke-width="9" stroke-linejoin="round" letter-spacing="4">GIBA</text>
+  <text x="540" y="905" text-anchor="middle" font-family="MichromaG" font-size="58" fill="#2EC4B6" stroke="#2EC4B6" stroke-width="2.5" letter-spacing="10">ALARMES</text>
+  <path d="M170,940 Q540,905 910,940" fill="none" stroke="url(#teal)" stroke-width="6"/>
+  <path d="M300,952 Q540,930 780,952" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <g transform="translate(240 1010)">
+    <circle r="34" fill="#25B04A"/>
+    <path d="M-14,-12 c4,-6 9,-6 11,-1 l4,8 c1,3 -1,5 -3,7 c3,6 8,11 14,14 c2,-2 4,-4 7,-3 l8,4 c5,2 5,7 -1,11 c-6,5 -16,4 -26,-3 c-10,-7 -18,-17 -21,-26 c-2,-6 -1,-9 7,-11 z" fill="#fff" transform="translate(-4 -2)"/>
+  </g>
+  <text x="300" y="1032" font-family="RussoG" font-size="70" fill="url(#gold)">48 98476-2698</text>
 </svg>
