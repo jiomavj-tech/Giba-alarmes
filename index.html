@@ -138,6 +138,9 @@ section.panel{display:flex;flex-direction:column;gap:16px}
 .info .pill{background:var(--shell);color:var(--accent)}
 .card h4{margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.catcard .chips{gap:6px}
+.catcard .chip[aria-pressed="true"]{background:var(--lit);border-color:var(--lit);color:var(--lit-ink)}
+.catcard p{font-size:14px}
 .card .ref{font-size:12.5px;color:var(--muted)}
 .note{background:var(--warn-bg);color:var(--ink);border-radius:12px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
 .note strong{color:var(--warn)}
@@ -272,6 +275,10 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
       </div>
     </div>
 
+    <div id="combo"></div>
+    <div class="results" id="results" aria-live="polite"></div>
+
+    <h3>Todas as categorias</h3>
     <div class="chips" id="catchips" hidden></div>
     <div class="legend" id="legend"></div>
     <div class="row">
@@ -279,9 +286,6 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
       <button class="btn" id="reset">Limpar tudo</button>
     </div>
 
-    <h2>Resultado</h2>
-    <div id="combo"></div>
-    <div class="results" id="results"></div>
   </section>
 
   <!-- ================= TESTES ================= -->
@@ -541,26 +545,45 @@ function card(d,catName){
     "<p class='ref'>"+MANUAL+", "+d.r+"</p></article>";
 }
 
+const CATINFO={
+  1:{what:"Falha na alimentação da central: rede elétrica, bateria ou saída auxiliar (AUX).",first:"Meça a AC no borne de rede, a bateria nos polos e a tensão da AUX (aba Testes)."},
+  2:{what:"Um teclado parou de se comunicar com a central ou está com a tampa aberta (tamper).",first:"Confira os fios T1/T2 e a alimentação do teclado na AUX."},
+  3:{what:"Um dispositivo do barramento (receptor sem fio ou interface de cerca) parou de responder.",first:"Confira os fios T1/T2 e a alimentação do receptor ou da cerca na AUX."},
+  4:{what:"Problema na fiação da sirene, na linha telefônica ou no envio de eventos para o monitoramento.",first:"Confira a fiação da sirene e se o local ainda usa linha telefônica."},
+  5:{what:"Algum sensor sem fio está com a bateria fraca.",first:"Descubra a zona e troque a bateria do sensor."},
+  6:{what:"A fiação ou a tampa de um sensor com fio foi violada (tamper).",first:"Confira a tampa do sensor e a fiação da zona indicada."},
+  7:{what:"A fiação de uma zona está em curto-circuito.",first:"Meça a fiação da zona indicada com o sensor desligado."}
+};
+function catCard(c){
+  const ds=st.det[c]||new Set(),L=CATS[c].labels;
+  const btns=Object.entries(L).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+k+" · "+v+"</button>").join("");
+  return "<article class='card info catcard'><div class='top'><h3>Categoria "+c+" · "+CATS[c].name+"</h3><span class='pill'>"+(ds.size?ds.size+" marcada"+(ds.size>1?"s":""):"Falta o detalhe")+"</span></div>"+
+    "<p>"+CATINFO[c].what+"</p>"+
+    "<p><strong>Primeira verificação:</strong> "+CATINFO[c].first+"</p>"+
+    "<div><h4>Qual tecla acendeu?</h4><p class='ref'>Digite <span class='cmd'>"+c+" + Enter</span> no teclado e toque aqui na mesma tecla:</p></div>"+
+    "<div class='chips'>"+btns+"</div></article>";
+}
 function renderResults(){
   const out=[];
   [...st.cats].sort().forEach(c=>{
+    out.push(catCard(c));
     const ds=st.det[c];
-    if(!ds||!ds.size){
-      out.push("<div class='empty'>Categoria <strong>"+c+" · "+CATS[c].name+"</strong>: digite <span class='cmd'>"+c+" + Enter</span> no teclado e marque o detalhe. <button class='btn' data-open='"+c+"'>Marcar detalhe</button></div>");
-      return;
-    }
-    [...ds].sort().forEach(k=>out.push(card(detail(c,k),c+" · "+CATS[c].name)));
+    if(ds&&ds.size)[...ds].sort().forEach(k=>out.push(card(detail(c,k),c+" · "+CATS[c].name)));
   });
-  $("results").innerHTML=out.length?out.join(""):"<p class='empty'>Nenhuma tecla marcada. Com o LED Problema piscando, faça o comando acima e marque o que acendeu.</p>";
+  $("results").innerHTML=out.length?out.join(""):"<p class='empty'>Nenhuma tecla marcada. Com o LED Problema piscando, faça o comando acima e toque nas teclas que acenderam. A orientação aparece aqui.</p>";
   const p=st.det[1]||new Set();
   let combo="";
   if(p.has(4)&&p.has(5)){
-    combo="<div class='note'><strong>Combinação 4 + 5"+(p.has(1)?" + 1":"")+": leitura suspeita</strong>"+
+    combo="<div class='note'><strong>Combinação "+(p.has(1)?"1 + ":"")+"4 + 5: leitura suspeita</strong>"+
       "<span>Quando a central acusa bateria em curto e sobrecarga juntas, mas a AC está presente e a AUX mede perto de 14,5 V, a placa está lendo errado. Nesse caso: 1) limpe as placas com álcool isopropílico; 2) reencaixe o cabo de 4 vias fonte ↔ placa (J4) e o conector da bateria; 3) teste sem bateria: se aparecer 4 mesmo assim, o defeito é da fonte ou da placa.</span></div>";
   }
   $("combo").innerHTML=combo;
 }
-$("results").addEventListener("click",e=>{const b=e.target.closest("[data-open]");if(b)openCat(+b.dataset.open);});
+$("results").addEventListener("click",e=>{
+  const b=e.target.closest("[data-cat]");if(!b)return;
+  const c=+b.dataset.cat,k=+b.dataset.k,ds=st.det[c]||(st.det[c]=new Set());
+  ds.has(k)?ds.delete(k):ds.add(k);render();
+});
 $("legend").addEventListener("keydown",e=>{const g=e.target.closest("[data-go]");if(g&&(e.key=="Enter"||e.key==" ")){e.preventDefault();openCat(+g.dataset.go);}});
 
 // tabs
@@ -705,11 +728,11 @@ function example(){
 }
 function ser(){const d={};Object.assign(d,st);d.cats=[...st.cats];d.det=Object.fromEntries(Object.entries(st.det).map(([k,v])=>[k,[...v]]));return JSON.stringify(d);}
 function load(){
-  try{const raw=localStorage.getItem("amt-app-v2");if(!raw)return null;const d=JSON.parse(raw);
+  try{const raw=localStorage.getItem("amt-app-v3");if(!raw)return null;const d=JSON.parse(raw);
     d.cats=new Set(d.cats);d.det=Object.fromEntries(Object.entries(d.det||{}).map(([k,v])=>[k,new Set(v)]));
     d.meas=d.meas||{};d.tests=d.tests||[];d.rep=d.rep||{};return d;}catch(e){return null;}
 }
-function touch(){keepTec=st.rep.tecnico||keepTec;try{localStorage.setItem("amt-app-v2",ser());}catch(e){}}
+function touch(){keepTec=st.rep.tecnico||keepTec;try{localStorage.setItem("amt-app-v3",ser());}catch(e){}}
 function renderAll(){render();renderMeas();renderTests();renderForm();buildReport();}
 
 
@@ -758,7 +781,7 @@ $("models").addEventListener("click",e=>{const m=e.target.closest(".model");if(!
 $("crumbs").addEventListener("click",e=>{const b=e.target.closest("[data-nav]");if(!b)return;b.dataset.nav=="home"?go(null,null):go(nav.brand,null);});
 window.addEventListener("popstate",e=>{const n=e.state||{};go(n.brand,n.model,false);});
 
-st=load()||example();
+st=load()||blank();
 keepTec=st.rep.tecnico||"";
 renderAll();
 renderBrands();
