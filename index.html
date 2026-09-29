@@ -270,6 +270,9 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 .brandtxt{display:flex;flex-direction:column;line-height:.9}
 .bt1{font:700 30px var(--display);letter-spacing:.01em;color:var(--ink)}
 .bt2{font:600 13px var(--display);letter-spacing:.34em;color:#1FA8A0}
+
+.axbox{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px}
+.axbox em{font-style:normal;font-weight:600}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
 </head>
@@ -348,7 +351,12 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
     </div>
 
     <div class="device devlcd" id="dev-lcd" hidden>
-      <div class="lcd" aria-live="polite">
+      <div class="axbox" id="axbox" hidden>
+        <strong>Onde ver as falhas no AX PRO</strong>
+        <span>App Hik-Connect / Hik-ProConnect: toque na central → <em>Manutenção</em> → <em>Status do dispositivo</em>, e confira as notificações e o registro de eventos. Pela web: <em>Maintenance → Device Status</em>.</span>
+        <span>A central também avisa por voz (prompts de falha ao armar e desarmar).</span>
+      </div>
+      <div class="lcd" id="lcdscreen" aria-live="polite">
         <div class="lcdicons" aria-hidden="true">
           <span>A</span><span>B</span><span class="off">C</span><span class="off">D</span>
           <span class="blinkc">!</span><span class="off">P</span>
@@ -357,10 +365,10 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
         <div class="lcdline" id="lcd1">Problema</div>
         <div class="lcdline" id="lcd2">Toque abaixo</div>
       </div>
-      <p class="devnote">Toque na mensagem que o visor mostrou. Havendo mais de um problema, o visor mostra um de cada vez: marque todos.</p>
+      <p class="devnote" id="lcdnote">Toque na mensagem que o visor mostrou. Havendo mais de um problema, o visor mostra um de cada vez: marque todos.</p>
       <p class="devnote" id="lcd3010" hidden>Na AMT 3010: letra <strong>P</strong> no canto inferior esquerdo = central pronta para ativar (zonas fechadas); <strong>P</strong> no canto superior direito = modo de programação; letra <strong>A</strong> na linha do relógio = zona anulada.</p>
       <div class="lcdlist" id="lcdlist"></div>
-      <details class="batinfo">
+      <details class="batinfo" id="batinfo">
         <summary>Ícone de bateria do visor</summary>
         <div class="tbl"><table>
           <tr><th>Ícone</th><th>Tensão da bateria</th></tr>
@@ -482,6 +490,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 const MANUAL = "Manual AMT 2010/2110/2018";
 const REF2010=/Enter 51|Enter \+ Anular|1,0 A|1,2 A|14,8|90–265|J4/;
 function srcLine(d){
+  if(curModelId()=="axpro")return "Manual do usuário Hikvision AX PRO (UD25814B, v1.2.7, 2022), item "+d.r+".";
   if(curModelId()=="amt4010")return "Guia unificado AMT 4010 SMART / SMART NET (01/26) e tutoriais técnicos Intelbras: "+d.r+".";
   if(curModelId()=="amt2018eg")return "Manual AMT 2018 E / 2018 EG (doc. 11779-02). Equivale ao manual AMT 2010, "+d.r+".";
   if(curModelId()=="amt3010")return "Manual AMT 3010 (rev. 01/17) e guia de instalação (01/17). Mesmos comandos da AMT 2010 ("+d.r+" naquele manual).";
@@ -538,9 +547,49 @@ const CATS = {
 for(let z=1;z<=8;z++){CATS[6].labels[z]="Zona "+z;CATS[7].labels[z]="Zona "+z;}
 // AMT 4010: índices dos dispositivos do barramento (guia unificado, item 4.37)
 const BUS4010={1:"Receptor XAR 01",2:"Receptor XAR 02",3:"Receptor XAR 03",4:"Receptor XAR 04",5:"Expansor PGM XEP 01",6:"Expansor PGM XEP 02",7:"Expansor PGM XEP 03",8:"Expansor PGM XEP 04",9:"Expansor zonas XEZ 01",10:"Expansor zonas XEZ 02",11:"Expansor zonas XEZ 03",12:"Expansor zonas XEZ 04",13:"Expansor zonas XEZ 05",14:"Expansor zonas XEZ 06"};
-function labelsOf(c){return (curModelId()=="amt4010"&&c==3)?BUS4010:CATS[c].labels;}
+const CATS_AX={
+  1:{name:"Alimentação",labels:{1:"Falta de energia (rede)",2:"Bateria da central baixa",3:"Bateria da central ausente"},det:{
+    1:{t:"Falta de energia na central",sev:"crit",m:["Fonte / tomada da central e disjuntor do circuito","Atraso de verificação da falta de energia (EN 50131-3 pede 10 s)"],s:["Restabelecer a alimentação da central","Enquanto isso, a central funciona pela bateria interna de lítio 4520 mAh (cerca de 12 h em repouso)","Verificar se o Modo de economia de energia não foi ligado por engano (desliga LED, voz, 4G e leitura de tag)"],r:"cap. 2 e 5.3.1 (Fault Check, System Management)"},
+    2:{t:"Bateria da central baixa",sev:"warn",m:["Há quanto tempo a central está sem energia da rede","Bateria interna de lítio 4520 mAh, autonomia de cerca de 12 h"],s:["Restabelecer a rede e deixar a bateria carregar","Persistindo com a rede presente: assistência técnica Hikvision"],r:"cap. 2 e 5.3.1 (Fault Check)"},
+    3:{t:"Bateria da central ausente",sev:"crit",m:["Conexão da bateria interna da central"],s:["Reconectar a bateria","Persistindo: assistência técnica Hikvision"],r:"5.3.1 (Fault Check)"}
+  }},
+  2:{name:"Comunicação",labels:{1:"Rede cabeada (LAN) perdida",2:"Wi-Fi perdido",3:"Rede celular (4G/GPRS) perdida",4:"Hik-Connect offline",5:"Alarme não chega ao app ou à central de monitoramento",6:"Conflito de IP",7:"Página web não abre",8:"Não consegue adicionar no app",9:"Câmera cai com frequência"},det:{
+    1:{t:"Rede cabeada (LAN) perdida",sev:"warn",m:["Cabo de rede e switch/roteador","LED de rede da central (verde = conectado)"],s:["Refazer o cabo ou trocar a porta","Atraso de falha de LAN (LAN Lost Delay) muito curto gera avisos à toa"],r:"3.2.2 e 5.3.1 (Fault Check)"},
+    2:{t:"Wi-Fi perdido",sev:"warn",m:["Sinal do Wi-Fi no local da central","Senha e rede do roteador"],s:["Reconfigurar o Wi-Fi pelo app: Configurar rede Wi-Fi (a central entra em modo AP e volta ao modo estação)","Trocou o roteador: aperte RESET atrás da central até ouvir \"Enter hotspot mode\" e reconfigure"],r:"3.2.3 e 5.2 (Wi-Fi Connection)"},
+    3:{t:"Rede celular (4G/GPRS) perdida",sev:"warn",m:["Chip inserido e com dados ativos","LED de rede da central (verde = conectado)"],s:["Testar o chip num celular","Conferir as configurações de rede celular no app ou na web"],r:"3.2.2 e 5.3.6 (Cellular Data Network)"},
+    4:{t:"Hik-Connect offline",sev:"warn",m:["A central acessa a internet (gateway e DNS)"],s:["Corrigir a configuração de rede da central (sem acesso à internet externa)"],r:"A.1.3"},
+    5:{t:"Alarme não chega ao app ou à central de monitoramento",sev:"crit",m:["Notificações: \"alarme e tamper\" habilitado","Zona ligada ao detector, sem bypass e sem função silenciosa"],s:["Habilitar a notificação de alarme e tamper","Conferir as configurações de ARC / SIA-DC09 e fazer o teste de sinalização"],r:"A.1.6, 5.2 (Check Alarm Notification) e 5.4"},
+    6:{t:"Conflito de IP",sev:"warn",m:["IP da central repetido na rede (teste com ping)"],s:["Escolher um IP livre, alterar e entrar de novo"],r:"A.1.1"},
+    7:{t:"Página web da central não abre",sev:"info",m:["Cabo de rede e rede da central","Porta web alterada"],s:["Refazer a conexão de rede","Digitar a porta junto do endereço (ex.: http://IP:porta)","Achar o IP com o programa SADP (mesma rede)"],r:"A.1.2 e 3.2.1"},
+    8:{t:"Não consegue adicionar no app",sev:"info",m:["Hik-Connect online na página web da central"],s:["Resolver o Hik-Connect offline primeiro","Central presa em outra conta: Desvincular (escanear o QR, apertar RESET 2 vezes rápido, código de verificação)"],r:"A.1.5 e 3.3.2"},
+    9:{t:"Câmera cai com frequência",sev:"info",m:["Rede e imagem ao vivo da câmera"],s:["Corrigir a rede da câmera"],r:"A.1.4"}
+  }},
+  3:{name:"Zonas e periféricos",labels:{1:"Zona offline",2:"Tamper na zona",3:"Zona disparada / com falha",4:"Sinal fraco do periférico",5:"Interferência de RF (jamming)",6:"Sirene com falha",7:"Controle (keyfob) com bateria baixa"},det:{
+    1:{t:"Zona offline",sev:"crit",m:["Bateria do detector (subtensão)","Sinal do detector (RSSI) no local","Obstáculos novos: portas, metal"],s:["Trocar a bateria do detector","Aproximar a central ou instalar um repetidor entre ela e o periférico","Seguir as regras de instalação: longe de metal, fora do chão, 50 cm livres em volta, de preferência na vertical"],r:"A.3.1 e 1.2–1.3"},
+    2:{t:"Tamper na zona",sev:"warn",m:["Tampa do detector e botão de tamper"],s:["Fechar o detector de modo que o botão de tamper fique pressionado"],r:"A.3.2"},
+    3:{t:"Zona disparada / com falha",sev:"warn",m:["Estado da zona no app"],s:["Reiniciar (resetar) o detector","Detectores de movimento: conferir o modo de restauração automática"],r:"A.3.3 e 5.3.1"},
+    4:{t:"Sinal fraco do periférico",sev:"warn",m:["RSSI do periférico (aba Testes): acima de 120 verde, 81–120 amarelo, 60–80 vermelho, abaixo de 60 vermelho piscando"],s:["Instalar só com sinal acima de 80; o ideal é 120 ou mais","Não cobrir o detector com a mão durante o teste de sinal","Instalar um repetidor ou mudar a posição"],r:"cap. 2 (RSSI) e 1.2"},
+    5:{t:"Interferência de RF (jamming)",sev:"warn",m:["Aparelhos de rádio perto da central ou dos periféricos"],s:["Afastar a fonte de interferência ou reposicionar a central","Ajustar a sensibilidade de detecção de jamming"],r:"5.3.1 (Jamming Sensitivity)"},
+    6:{t:"Sirene com falha",sev:"crit",m:["Status da sirene no app","Sinal e bateria da sirene"],s:["Corrigir a sirene: ela impede armar sem forçar"],r:"6.1"},
+    7:{t:"Controle (keyfob) com bateria baixa",sev:"info",m:["Bateria do controle"],s:["Trocar a bateria: ela impede armar sem forçar"],r:"6.1"}
+  }},
+  4:{name:"Armar e operação",labels:{1:"Não arma",2:"Não entra no modo de teste",3:"Não entra no modo de registro"},det:{
+    1:{t:"Central não arma",sev:"warn",m:["Detector disparado, pânico, tamper, falha de comunicação, energia, bateria, sirene, central de monitoramento ou keyfob com bateria baixa"],s:["Corrigir a falha e armar de novo","Ou armar forçado (Forced Arming) com permissão nível 2: a zona com falha fica em bypass e fica registrado no log","Para o armamento forçado funcionar, desligar \"Arm With Faults\" nas opções de armar"],r:"6.1, A.4.1 e 5.3.1"},
+    2:{t:"Não entra no modo de teste",sev:"info",m:["Mensagem \"falha na zona\": estado, alarme ou alimentação da zona"],s:["Normalizar a zona e tentar de novo (Manutenção → Teste de caminhada)"],r:"A.5.1 e 5.1.1 (Walk Test)"},
+    3:{t:"Não entra no modo de registro",sev:"info",m:["Central em modo Hotspot (AP)"],s:["Passar a central para modo Station e tentar de novo"],r:"A.2.1"}
+  }}
+};
+const CATINFO_AX={
+  1:{what:"Falha na energia da central: rede ou bateria interna.",first:"Confira a fonte, a tomada e o status de energia no app."},
+  2:{what:"A central perdeu uma via de comunicação ou não está entregando os avisos.",first:"Veja no app ou na web qual via caiu: LAN, Wi-Fi, 4G ou nuvem."},
+  3:{what:"Um detector, sirene ou controle sem fio está com problema.",first:"Veja o status do periférico no app: offline, tamper, bateria ou sinal."},
+  4:{what:"A central recusa armar ou entrar em um modo de serviço.",first:"Leia o motivo que a central fala ou mostra no app."}
+};
+function C(){return curModelId()=="axpro"?CATS_AX:CATS;}
+function labelsOf(c){return (curModelId()=="amt4010"&&c==3)?BUS4010:C()[c].labels;}
 
 function detail(cat,k){
+  if(curModelId()=="axpro")return CATS_AX[cat].det[k];
   const d=detailBase(cat,k);
   if(curModelId()=="amt3010"&&d)return detail3010(cat,k,d);
   if(curModelId()=="amt4010")return detail4010(cat,k,d);
@@ -600,7 +649,7 @@ function detail3010(cat,k,d){
   return x;
 }
 function detailBase(cat,k){
-  const c=CATS[cat];
+  const c=C()[cat];
   if(c.det[k]) return c.det[k];
   if(cat==2){
     const n="0"+(k>4?k-4:k);
@@ -669,10 +718,10 @@ PAD.forEach(p=>{
 });
 $("zleds").addEventListener("click",e=>{const b=e.target.closest(".zled");if(b&&!b.disabled)toggle(+b.dataset.k);});
 function renderLcdList(){
-  $("lcdlist").innerHTML=Object.keys(CATS).map(c=>{
+  $("lcdlist").innerHTML=Object.keys(C()).map(c=>{
     const ds=st.det[c]||new Set();
     const chips=Object.entries(labelsOf(c)).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+v+"</button>").join("");
-    return "<div class='lcdgroup'><h4>"+c+" · "+CATS[c].name+"</h4><div class='chips'>"+chips+"</div></div>";
+    return "<div class='lcdgroup'><h4>"+c+" · "+C()[c].name+"</h4><div class='chips'>"+chips+"</div></div>";
   }).join("");
 }
 $("lcdlist").addEventListener("click",e=>{
@@ -688,13 +737,13 @@ function renderLcd(){
     const ls=(st.model!="lcd"&&st.step=="det"&&st.active)?(st.last&&st.last.c==st.active?st.last:{c:st.active}):(st.last&&st.cats.has(st.last.c)?st.last:{c:cs[cs.length-1]});
     const c=ls.c,ds=st.det[c]||new Set();
     const k=ls.k!=null&&ds.has(ls.k)?ls.k:(ds.size?[...ds].sort().pop():null);
-    if(k!=null){l1=CATS[c].name;l2=labelsOf(c)[k];}
-    else{l1="Problema";l2=CATS[c].name;}
+    if(k!=null){l1=C()[c].name;l2=labelsOf(c)[k];}
+    else{l1="Problema";l2=C()[c].name;}
   }
   $("lcd1").textContent=l1;$("lcd2").textContent=l2;
 }
 
-function labelsNow(){return st.step=="cat"?Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v.name])):labelsOf(st.active);}
+function labelsNow(){return st.step=="cat"?Object.fromEntries(Object.entries(C()).map(([k,v])=>[k,v.name])):labelsOf(st.active);}
 function setNow(){if(st.step=="cat")return st.cats;return st.det[st.active]||(st.det[st.active]=new Set());}
 
 function toggle(k){
@@ -727,7 +776,7 @@ $("model").addEventListener("click",e=>{
 });
 
 function render(){
-  const KB=curModelId()=="amt4010"?["lcd"]:["xat2000","xat3000","lcd"];
+  const KB=(curModelId()=="amt4010"||curModelId()=="axpro")?["lcd"]:["xat2000","xat3000","lcd"];
   if(KB.indexOf(st.model)<0){st.model=KB[0];st.step="cat";st.active=null;}
   document.querySelectorAll("#model button").forEach(b=>{b.hidden=KB.indexOf(b.dataset.m)<0;});
   document.querySelectorAll("#model button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.m==st.model));
@@ -738,16 +787,19 @@ function render(){
   const L=labelsNow(),S=setNow();
   const P=PROMPT[st.model]||PROMPT.xat2000;
   if(st.step=="cat"){
-    $("prompt").innerHTML=P[0];
+    $("prompt").innerHTML=curModelId()=="axpro"?"Abra o status da central no app e marque as falhas.":P[0];
   }else{
-    $("prompt").innerHTML="Categoria <strong>"+st.active+" · "+CATS[st.active].name+"</strong>. "+P[1].replace("{c}",st.active);
+    $("prompt").innerHTML="Categoria <strong>"+st.active+" · "+C()[st.active].name+"</strong>. "+P[1].replace("{c}",st.active);
   }
   ["xat2000","xat3000","lcd"].forEach(m=>{$("dev-"+m).hidden=m!=st.model;});
   $("zleds").querySelectorAll(".zled").forEach(b=>{
     const n=+b.dataset.k,usable=!!L[n];
     b.classList.toggle("lit",usable&&S.has(n));b.disabled=!usable;
   });
-  $("howto").innerHTML=HOWTO[st.model]+(curModelId()=="amt4010"?" O guia da AMT 4010 descreve a exibição de problemas pelo visor do XAT 2000 LCD / XAT 4000 LCD.":"");
+  const isAX=curModelId()=="axpro";
+  $("model").hidden=isAX;$("axbox").hidden=!isAX;$("lcdscreen").hidden=isAX;$("batinfo").hidden=isAX;
+  $("lcdnote").textContent=isAX?"Toque nas falhas que o app mostrou. A orientação aparece logo abaixo.":"Toque na mensagem que o visor mostrou. Havendo mais de um problema, o visor mostra um de cada vez: marque todos.";
+  $("howto").innerHTML=isAX?"O AX PRO é uma central sem fio: não tem código de teclado. As falhas aparecem no app, na página web e nos avisos de voz da central.":HOWTO[st.model]+(curModelId()=="amt4010"?" O guia da AMT 4010 descreve a exibição de problemas pelo visor do XAT 2000 LCD / XAT 4000 LCD.":"");
   const isLcd=st.model=="lcd";
   $("steps").hidden=isLcd;$("allcats").hidden=isLcd;$("legend").hidden=isLcd;
   if(isLcd){$("back").hidden=true;renderLcdList();}
@@ -763,7 +815,7 @@ function render(){
   const cc=$("catchips");
   if(st.step=="det"&&st.cats.size>1){
     cc.hidden=false;
-    cc.innerHTML=[...st.cats].sort().map(c=>"<button class='chip' data-c='"+c+"' aria-pressed='"+(c==st.active)+"'>"+c+" · "+CATS[c].name+"</button>").join("");
+    cc.innerHTML=[...st.cats].sort().map(c=>"<button class='chip' data-c='"+c+"' aria-pressed='"+(c==st.active)+"'>"+c+" · "+C()[c].name+"</button>").join("");
   }else cc.hidden=true;
   // legend
   $("legend").innerHTML=Object.entries(L).map(([k,v])=>{
@@ -797,10 +849,10 @@ const CATINFO={
 function catCard(c){
   const ds=st.det[c]||new Set(),L=labelsOf(c);
   const btns=Object.entries(L).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+k+" · "+v+"</button>").join("");
-  return "<article class='card info catcard'><div class='top'><h3>Categoria "+c+" · "+CATS[c].name+"</h3><span class='pill'>"+(ds.size?ds.size+" marcada"+(ds.size>1?"s":""):"Falta o detalhe")+"</span></div>"+
-    "<p>"+CATINFO[c].what+"</p>"+
-    "<p><strong>Primeira verificação:</strong> "+CATINFO[c].first+"</p>"+
-    (st.model=="lcd"?"<div><h4>Qual mensagem o visor mostrou?</h4></div>":"<div><h4>"+(st.model=="xat3000"?"Qual LED acendeu?":"Qual tecla acendeu?")+"</h4><p class='ref'>Digite <span class='cmd'>"+c+" + Enter</span> no teclado e toque aqui "+(st.model=="xat3000"?"no mesmo LED":"na mesma tecla")+":</p></div>")+
+  return "<article class='card info catcard'><div class='top'><h3>Categoria "+c+" · "+C()[c].name+"</h3><span class='pill'>"+(ds.size?ds.size+" marcada"+(ds.size>1?"s":""):"Falta o detalhe")+"</span></div>"+
+    "<p>"+(curModelId()=="axpro"?CATINFO_AX:CATINFO)[c].what+"</p>"+
+    "<p><strong>Primeira verificação:</strong> "+(curModelId()=="axpro"?CATINFO_AX:CATINFO)[c].first+"</p>"+
+    (curModelId()=="axpro"?"<div><h4>Qual falha o app mostrou?</h4></div>":st.model=="lcd"?"<div><h4>Qual mensagem o visor mostrou?</h4></div>":"<div><h4>"+(st.model=="xat3000"?"Qual LED acendeu?":"Qual tecla acendeu?")+"</h4><p class='ref'>Digite <span class='cmd'>"+c+" + Enter</span> no teclado e toque aqui "+(st.model=="xat3000"?"no mesmo LED":"na mesma tecla")+":</p></div>")+
     "<div class='chips'>"+btns+"</div></article>";
 }
 function renderResults(){
@@ -808,12 +860,12 @@ function renderResults(){
   [...st.cats].sort().forEach(c=>{
     out.push(catCard(c));
     const ds=st.det[c];
-    if(ds&&ds.size)[...ds].sort().forEach(k=>out.push(card(detail(c,k),c+" · "+CATS[c].name)));
+    if(ds&&ds.size)[...ds].sort().forEach(k=>out.push(card(detail(c,k),c+" · "+C()[c].name)));
   });
   $("results").innerHTML=out.length?out.join(""):"<p class='empty'>Nenhuma tecla marcada. Com o LED Problema piscando, faça o comando acima e toque nas teclas que acenderam. A orientação aparece aqui.</p>";
   const p=st.det[1]||new Set();
   let combo="";
-  if(p.has(4)&&p.has(5)&&curModelId()!="amt3010"&&curModelId()!="amt4010"){
+  if(p.has(4)&&p.has(5)&&["amt2010","amt2018eg"].indexOf(curModelId())>=0){
     combo="<div class='note'><strong>Combinação "+(p.has(1)?"1 + ":"")+"4 + 5: leitura suspeita</strong>"+
       "<span>Quando a central acusa bateria em curto e sobrecarga juntas, mas a AC está presente e a AUX mede perto de 14,5 V, a placa está lendo errado. Nesse caso: 1) limpe as placas com álcool isopropílico; 2) reencaixe o cabo de 4 vias fonte ↔ placa (J4) e o conector da bateria; 3) teste sem bateria: se aparecer 4 mesmo assim, o defeito é da fonte ou da placa.</span></div>";
   }
@@ -871,7 +923,10 @@ const RULES4010={
   ab:v=>near(v,120),agnd:v=>near(v,2500),bgnd:v=>near(v,2500)
 };
 function near(v,ref){const d=Math.abs(v-ref)/ref;return d<=0.2?["ok","Perto da referência de "+ref+" Ω."]:d<=0.5?["warn","Afastado da referência de "+ref+" Ω. Repetir a medição com a central totalmente desligada."]:["crit","Muito longe de "+ref+" Ω. O tutorial manda encaminhar o equipamento à assistência técnica Intelbras."];}
+const MEASAX=[{id:"rssi",label:"Sinal do periférico (RSSI)",unit:"",ph:"120",hint:"Valor mostrado no app para o detector ou sirene. Instale com mais de 80; o ideal é 120 ou mais."}];
+const RULESAX={rssi:v=>v>120?["ok","Forte (verde): pode instalar."]:v>=81?["ok","Médio (amarelo): pode instalar."]:v>=60?["warn","Fraco (vermelho): funciona, mas não é recomendado instalar aí."]:["crit","Inválido (vermelho piscando): não instale aí, não funciona direito."]};
 function measList(){
+  if(curModelId()=="axpro")return MEASAX;
   if(curModelId()=="amt4010")return MEAS.map(m=>m.id=="fonte"?Object.assign({},m,{label:"Saída da fonte chaveada",hint:"No conector de alimentação da placa. Fonte 14,5 VDC / 1,8 A."}):m).concat(MEAS4010);
   if(curModelId()!="amt3010")return MEAS;
   return MEAS.filter(m=>m.id!="fonte").map(m=>MEAS3010[m.id]?Object.assign({},m,MEAS3010[m.id]):m);
@@ -879,7 +934,7 @@ function measList(){
 function renderMeas(){
   $("meas").innerHTML=measList().map(m=>{
     const d=st.meas[m.id]||{};
-    return "<div class='field' data-id='"+m.id+"'><label for='m-"+m.id+"'>"+m.label+" ("+m.unit+")</label>"+
+    return "<div class='field' data-id='"+m.id+"'><label for='m-"+m.id+"'>"+m.label+(m.unit?" ("+m.unit+")":"")+"</label>"+
       "<input id='m-"+m.id+"' inputmode='decimal' placeholder='"+m.ph+"' value='"+esc(d.v||"")+"'>"+
       "<span class='hint'>"+m.hint+"</span><div class='verdict' id='v-"+m.id+"'></div>"+statusHTML(d.s)+"</div>";
   }).join("");
@@ -888,7 +943,7 @@ function renderMeas(){
 function verdict(id){
   const d=st.meas[id]||{},o=$("v-"+id),v=num(d.v);
   if(v==null||isNaN(v)){o.className="verdict";o.textContent="";return null;}
-  const R=(curModelId()=="amt3010"&&RULES3010[id])||(curModelId()=="amt4010"&&RULES4010[id])||RULES[id];
+  const R=(curModelId()=="axpro"&&RULESAX[id])||(curModelId()=="amt3010"&&RULES3010[id])||(curModelId()=="amt4010"&&RULES4010[id])||RULES[id];
   const [c,t]=R(v);o.className="verdict "+c;o.textContent=t;return c;
 }
 $("meas").addEventListener("input",e=>{
@@ -911,7 +966,7 @@ function renderTests(){
     "<div class='test' data-i='"+i+"'><input class='nm' id='t-n-"+i+"' aria-label='Nome do teste' placeholder='Teste' value='"+esc(t.n)+"'>"+
     "<input class='val' id='t-v-"+i+"' aria-label='Valor ou resultado' placeholder='Valor' value='"+esc(t.v)+"'>"+statusHTML(t.s)+
     "<button type='button' class='del'>Remover</button></div>").join(""):"<p class='empty'>Nenhum teste extra. Toque numa sugestão abaixo ou em Adicionar teste.</p>";
-  const Q=curModelId()=="amt4010"?QUICK.filter(q=>!/Cabo 4 vias|Teste sem bateria/.test(q)).concat(["Teste de dispositivos (Enter 59 0)","Varredura do barramento (Enter 37)","Jumper de casamento (último dispositivo)","Versão da central (tecla 1 por 3 s)","IP local (tecla 3 por 3 s)","Chip / APN / sinal GPRS"]):curModelId()=="amt3010"?QUICK.filter(q=>!/Fusível 1,0 A|Cabo 4 vias/.test(q)).concat(["Transformador 16,5 VAC","Ajuste de corrente (Enter 56)"]):curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
+  const Q=curModelId()=="axpro"?["Teste de caminhada (Walk Test)","Status dos dispositivos no app","Sinal (RSSI) dos periféricos","Bateria dos detectores","Notificação de alarme e tamper","Conexão LAN / Wi-Fi / 4G","Hik-Connect online","Teste de sinalização com a monitoramento","Sirene","Aterramento"]:curModelId()=="amt4010"?QUICK.filter(q=>!/Cabo 4 vias|Teste sem bateria/.test(q)).concat(["Teste de dispositivos (Enter 59 0)","Varredura do barramento (Enter 37)","Jumper de casamento (último dispositivo)","Versão da central (tecla 1 por 3 s)","IP local (tecla 3 por 3 s)","Chip / APN / sinal GPRS"]):curModelId()=="amt3010"?QUICK.filter(q=>!/Fusível 1,0 A|Cabo 4 vias/.test(q)).concat(["Transformador 16,5 VAC","Ajuste de corrente (Enter 56)"]):curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
   $("quick").innerHTML=Q.filter(q=>!st.tests.some(t=>t.n==q)).map(q=>"<button type='button' data-q='"+esc(q)+"'>+ "+q+"</button>").join("");
 }
 $("tests").addEventListener("input",e=>{
@@ -947,12 +1002,12 @@ function buildReport(){
   const probs=[];
   [...st.cats].sort().forEach(c=>{
     const ds=st.det[c];
-    if(!ds||!ds.size)probs.push("- Categoria "+c+" ("+CATS[c].name+")");
+    if(!ds||!ds.size)probs.push("- Categoria "+c+" ("+C()[c].name+")");
     else [...ds].sort().forEach(k=>probs.push("- "+c+"."+k+" "+detail(c,k).t));
   });
   if(probs.length){L.push("");L.push("FALHAS INDICADAS PELA CENTRAL");L.push(...probs);}
   const tl=[];
-  measList().forEach(m=>{const d=st.meas[m.id];if(d&&(d.v||d.s))tl.push("- "+m.label+": "+(d.v?d.v.trim()+" "+m.unit:"—")+(d.s?" ["+ST[d.s]+"]":""));});
+  measList().forEach(m=>{const d=st.meas[m.id];if(d&&(d.v||d.s))tl.push("- "+m.label+": "+(d.v?(d.v.trim()+(m.unit?" "+m.unit:"")):"—")+(d.s?" ["+ST[d.s]+"]":""));});
   st.tests.forEach(t=>{if(t.n||t.v)tl.push("- "+(t.n||"Teste")+": "+(t.v||"—")+(t.s?" ["+ST[t.s]+"]":""));});
   if(tl.length){L.push("");L.push("TESTES E MEDIÇÕES");L.push(...tl);}
   [["DIAGNÓSTICO",r.diag],["SERVIÇOS REALIZADOS",r.serv],["RECOMENDAÇÕES",r.recom]].forEach(([h,v])=>{if(v&&v.trim()){L.push("");L.push(h);L.push(v.trim());}});
@@ -1167,6 +1222,65 @@ const REF={
       <tr><td>5.00</td><td>SMS removido; falha do XEZ passa a ser acusada com ~75% de falha de comunicação; eventos de keep alive (1 360 GPRS, 1 361 Ethernet) e de dispositivo no barramento (3 531)</td></tr>
     </table></div>
     <p class="foot">Fontes: Guia unificado AMT 4010 SmartNet (01/26); Datasheet AMT 4010 SMART NET (02/19); Informativo AMT 4010 (01/22); tutoriais Intelbras: Barramento A-B (2019), Medidas do barramento AB, Conexão GPRS (2020), Reset temporário, Bootloader e Particionamento (2020); Guia de compatibilidade Intelbras.</p>`,
+  axpro:`<p class="howto">O AX PRO não tem comandos de teclado como as centrais com fio: tudo é feito pelo app Hik-Connect / Hik-ProConnect, pela página web ou pelo programa SADP.</p>
+    <div class="tbl"><table>
+      <tr><th>Tarefa</th><th>Onde fazer</th></tr>
+      <tr><td>Ver falhas e estado de zonas, sirenes, teclados e repetidores</td><td>App: Manutenção → Status · Web: Maintenance → Device Status</td></tr>
+      <tr><td>Teste de caminhada</td><td>App: Manutenção → Manutenção do dispositivo → Teste → Iniciar</td></tr>
+      <tr><td>Escolher quais falhas a central verifica</td><td>System → System Options → System Fault Check</td></tr>
+      <tr><td>Armar forçado (com zona em falha)</td><td>System Management → Forced Arming (desligar "Arm With Faults")</td></tr>
+      <tr><td>Reiniciar a central</td><td>App: Manutenção → Reiniciar · Web: Maintenance → Reboot</td></tr>
+      <tr><td>Restaurar padrão parcial / total</td><td>Web: Maintenance → Partly Restore / Restore All</td></tr>
+      <tr><td>Atualizar central e periféricos</td><td>App: Manutenção → Atualização do dispositivo / de detectores e periféricos</td></tr>
+      <tr><td>Achar o IP e ativar a central</td><td>Programa SADP (computador na mesma rede)</td></tr>
+      <tr><td>Trocar o Wi-Fi da central</td><td>Botão RESET atrás da central até ouvir "Enter hotspot mode"</td></tr>
+      <tr><td>Desvincular de outra conta</td><td>Escanear o QR da etiqueta, RESET 2 vezes rápido, código de verificação</td></tr>
+      <tr><td>Registro para suporte Hikvision</td><td>App: Manutenção → Coleta remota de log</td></tr>
+    </table></div>
+    <h3>Sinal dos periféricos (RSSI)</h3>
+    <div class="tbl"><table>
+      <tr><th>Sinal</th><th>RSSI</th><th>Indicação</th><th>Instalação</th></tr>
+      <tr><td>Forte</td><td class="v">&gt; 120</td><td>Verde</td><td>OK</td></tr>
+      <tr><td>Médio</td><td class="v">81–120</td><td>Amarelo</td><td>OK</td></tr>
+      <tr><td>Fraco</td><td class="v">60–80</td><td>Vermelho</td><td>Não recomendado, mas funciona</td></tr>
+      <tr><td>Inválido</td><td class="v">0–59</td><td>Vermelho piscando</td><td>Não instalar</td></tr>
+    </table></div>
+    <h3>Regras de instalação</h3>
+    <div class="tbl"><table>
+      <tr><th>Regra</th></tr>
+      <tr><td>Não instalar sobre metal, nem dentro de caixa metálica, nem no chão</td></tr>
+      <tr><td>Deixar 50 cm livres em volta do aparelho (menos a superfície de fixação)</td></tr>
+      <tr><td>Repetidor entre a central e o periférico distante</td></tr>
+      <tr><td>Instalar de preferência na vertical</td></tr>
+      <tr><td>Testar o sinal sem cobrir o detector com a mão; portas fechadas mudam o sinal</td></tr>
+    </table></div>
+    <h3>Indicações e armar</h3>
+    <div class="tbl"><table>
+      <tr><th>Indicação</th><th>Significado</th></tr>
+      <tr><td>LED de energia verde</td><td>Central alimentada</td></tr>
+      <tr><td>LED de rede verde</td><td>Conectada à rede (LAN, Wi-Fi ou chip)</td></tr>
+      <tr><td>LED de armar azul fixo por 5 s</td><td>Armou</td></tr>
+      <tr><td>LED de armar piscando por 30 s</td><td>Desarmou pela rota de entrada</td></tr>
+    </table></div>
+    <h3>Controle por SMS</h3>
+    <div class="tbl"><table>
+      <tr><th>Mensagem</th><th>Ação</th></tr>
+      <tr><td class="v">0010</td><td>Desarmar todas as áreas</td></tr>
+      <tr><td class="v">0110</td><td>Armar ausente todas as áreas</td></tr>
+      <tr><td class="v">0210</td><td>Armar em casa (stay) todas as áreas</td></tr>
+      <tr><td class="v">0310</td><td>Silenciar o alarme</td></tr>
+    </table></div>
+    <p class="foot">Formato: comando (00 desarmar, 01 ausente, 02 em casa, 03 silenciar) + 1 (área) + área (0 = todas, 1 = área 1…).</p>
+    <h3>Dados da central</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Bateria interna</td><td class="v">Lítio 4520 mAh · ~12 h em repouso</td></tr>
+      <tr><td>Comunicação</td><td class="v">LAN, Wi-Fi, 4G/GPRS</td></tr>
+      <tr><td>Monitoramento</td><td class="v">SIA-DC09, Contact ID e SIA</td></tr>
+      <tr><td>Rádio</td><td class="v">Tri-X bidirecional, AES-128, salto de frequência</td></tr>
+      <tr><td>Tempo de entrada (EN 50131-1)</td><td class="v">até 45 s</td></tr>
+    </table></div>
+    <p class="foot">Fonte: Hikvision AX PRO User Manual (UD25814B, v1.2.7, 2022), caps. 1–6 e apêndice A. O manual não traz tensão de fonte nem tabela completa de LEDs; por isso a aba Testes deste modelo mede só o sinal (RSSI).</p>`,
   amt3010:`<p class="howto">No <strong>XAT 2000</strong>, use <span class="cmd">Prog</span> no lugar do primeiro <span class="cmd">Enter</span>. Os comandos de instalador exigem a senha do instalador.</p>
     <div class="tbl"><table>
       <tr><th>Função</th><th>Comando</th></tr>
@@ -1244,7 +1358,9 @@ const BRANDS=[
     {id:"amt4010",name:"AMT 4010 SMART / SMART NET",desc:"Até 64 zonas · barramentos T1/T2 e A-B (RS485) · Ethernet e GPRS opcional · guia unificado 01/26 e tutoriais técnicos",ready:true},
     {id:"amt3010",name:"AMT 3010",desc:"Central monitorada · teclados XAT 2000 e XAT 2000 LCD · guia do usuário rev. 02/11",ready:true}
   ]},
-  {id:"hikvision",name:"Hikvision",models:[]},
+  {id:"hikvision",name:"Hikvision",models:[
+    {id:"axpro",name:"AX PRO",desc:"Central sem fio · LAN, Wi-Fi e 4G/GPRS · configuração pelo Hik-Connect / Hik-ProConnect e web · manual v1.2.7 (2022)",ready:true}
+  ]},
   {id:"jfl",name:"JFL",models:[]}
 ];
 let nav={brand:null,model:null};
