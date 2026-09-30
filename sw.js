@@ -1,6 +1,6 @@
 // Guarda o app no celular para funcionar sem internet.
 // A página principal busca primeiro a versão nova na internet; sem sinal, usa a cópia guardada.
-const CACHE = "giba-v13";
+const CACHE = "giba-v14";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192-g2.png", "icons/icon-512-g2.png", "icons/icon-180-g2.png", "icons/icon-maskable-512-g2.png"];
 
 self.addEventListener("install", e => {

@@ -272,6 +272,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 .bt2{font:600 13px var(--display);letter-spacing:.34em;color:#1FA8A0}
 
 .axbox{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px}
+.axbox0{display:flex;flex-direction:column;gap:6px}
 .axbox em{font-style:normal;font-weight:600}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
@@ -351,11 +352,11 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
     </div>
 
     <div class="device devlcd" id="dev-lcd" hidden>
-      <div class="axbox" id="axbox" hidden>
+      <div class="axbox" id="axbox" hidden><div id="axboxfixed" class="axbox0">
         <strong>Onde ver as falhas no AX PRO</strong>
         <span>App Hik-Connect / Hik-ProConnect: toque na central → <em>Manutenção</em> → <em>Status do dispositivo</em>, e confira as notificações e o registro de eventos. Pela web: <em>Maintenance → Device Status</em>.</span>
         <span>A central também avisa por voz (prompts de falha ao armar e desarmar).</span>
-      </div>
+      </div><div id="axboxflat" class="axbox0" hidden></div></div>
       <div class="lcd" id="lcdscreen" aria-live="polite">
         <div class="lcdicons" aria-hidden="true">
           <span>A</span><span>B</span><span class="off">C</span><span class="off">D</span>
@@ -490,6 +491,7 @@ td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 const MANUAL = "Manual AMT 2010/2110/2018";
 const REF2010=/Enter 51|Enter \+ Anular|1,0 A|1,2 A|14,8|90–265|J4/;
 function srcLine(d){
+  if(isFlat())return FLAT[curModelId()].src+", "+d.r+".";
   if(curModelId()=="axpro")return "Manual do usuário Hikvision AX PRO (UD25814B, v1.2.7, 2022), item "+d.r+".";
   if(curModelId()=="amt4010")return "Guia unificado AMT 4010 SMART / SMART NET (01/26) e tutoriais técnicos Intelbras: "+d.r+".";
   if(curModelId()=="amt2018eg")return "Manual AMT 2018 E / 2018 EG (doc. 11779-02). Equivale ao manual AMT 2010, "+d.r+".";
@@ -585,11 +587,281 @@ const CATINFO_AX={
   3:{what:"Um detector, sirene ou controle sem fio está com problema.",first:"Veja o status do periférico no app: offline, tamper, bateria ou sinal."},
   4:{what:"A central recusa armar ou entrar em um modo de serviço.",first:"Leia o motivo que a central fala ou mostra no app."}
 };
-function C(){return curModelId()=="axpro"?CATS_AX:CATS;}
+// ---------- JFL: modelos com lista direta de problemas ----------
+function dd(t,sev,m,s,r){return {t:t,sev:sev,m:m,s:s,r:r};}
+const GND=["Aterramento: haste cobreada de 2,4 m em local úmido, ligada ao borne TERRA","Nunca usar o neutro da rede como terra"];
+const FLAT={
+  active20:{
+    src:"Manual resumido JFL Active 20 Ultra / Active 20 GPRS (v2.2, rev. 07)",
+    box:"<strong>Onde ver os problemas</strong><span>Teclado de LEDs (TEC-100 / TEC-100R): aperte <em>PROB</em>. As teclas que acenderem mostram os problemas, conforme a lista abaixo.</span><span>Teclado LCD: o indicador <em>[P]</em> avisa que há problema; aperte <em>PROB</em> para ler o texto.</span>",
+    howto:"Na Active 20, a tecla PROB mostra os problemas de uma vez: cada tecla acesa (1 a 0) é um problema. Não tem segundo nível.",
+    note:"Toque nas teclas que acenderam depois do PROB.",
+    cats:{1:{name:"Tecla acesa após PROB",labels:{1:"1 · AC",2:"2 · Bateria",3:"3 · Sirene",4:"4 · Teclado",5:"5 · Sensores",6:"6 · Linha telefônica",7:"7 · Rede GPRS",8:"8 · Rede Ethernet",9:"9 · Envio de SMS",10:"0 · Módulo de celular"},det:{
+      1:dd("Falta de AC","crit",["Energia na tomada e no disjuntor","Fusível de proteção da central","Tensão de alimentação: Active 20 Ultra 90–250 VAC; Active 20 GPRS 127/220 VAC"],["Restabelecer a energia ou trocar o fusível queimado pelo mesmo valor"],"tabela de problemas (tecla 1) e especificações"),
+      2:dd("Problema de bateria","warn",["Bateria conectada e com carga (12 V / 7 Ah)","Tensão do carregador: 13,8 V"],["Reconectar ou trocar a bateria"],"tabela de problemas (tecla 2) e especificações"),
+      3:dd("Problema de sirene","crit",["Sirene desconectada ou em curto","Bateria com carga baixa (a sirene só toca com bateria)"],["Refazer a fiação da sirene","Carregar ou trocar a bateria"],"tabela de problemas (tecla 3)"),
+      4:dd("Problema de teclado","warn",["Um ou mais teclados retirados ou sem comunicação","Supervisão de teclado habilitada (end. 801, LED 4)"],["Religar o teclado","Endereçar os teclados de novo (end. 810, valores 1 a 4, sem repetir); o TEC-100R precisa ser endereçado"],"tabela de problemas (tecla 4) e item 9"),
+      5:dd("Problema de sensores","crit",["Sensor em curto ou com o tamper aberto","Resistor de fim de linha ausente (zonas com resistor: end. 804, tecla 1)","Teclado com zona programada desconectado"],["Refazer a fiação ou fechar o tamper","Instalar o resistor de fim de linha"],"tabela de problemas (tecla 5) e end. 804"),
+      6:dd("Problema de linha telefônica","warn",["Linha telefônica desconectada do alarme"],["Religar a linha nos bornes da central"],"tabela de problemas (tecla 6)"),
+      7:dd("Problema na rede GPRS","warn",["Chip sem crédito ou com limite de dados excedido","Cliente bloqueado na monitoramento","IP de destino (end. 702/703) e porta (706/707) programados errado","Problema na estação de monitoramento"],["Recarregar ou trocar o chip","Conferir a programação de destino"],"tabela de problemas (tecla 7) e item 14.2"),
+      8:dd("Problema na rede Ethernet","warn",["Cabo de rede desconectado","IP configurado errado","IP ou porta local bloqueados por firewall","Destino programado errado ou problema na monitoramento"],["Refazer o cabo, corrigir o IP ou liberar a porta no firewall"],"tabela de problemas (tecla 8) e item 14.3"),
+      9:dd("Falha no envio de SMS","info",["Chip sem crédito","Telefone de destino errado ou sem DDD"],["Recarregar o chip e corrigir o número com DDD"],"tabela de problemas (tecla 9)"),
+      10:dd("Problema no módulo de celular","warn",["Módulo com defeito ou sem chip","PIN errado (end. 721/731), se o chip pedir PIN","Sem sinal de celular ou operadora não encontrada"],["Conferir o chip e o PIN","Testar outro chip ou posição da antena"],"tabela de problemas (tecla 0)")
+    }}},
+    meas:[{id:"bat",label:"Bateria nos polos",unit:"V=",ph:"12,7",hint:"Em repouso. Bateria 12 V / 7 Ah; carregador da central 13,8 V."},{id:"aux",label:"Saída auxiliar",unit:"V=",ph:"13,5",hint:"Carga máxima: 850 mA (versão 2.0 ou maior; desliga em 1 A) ou 650 mA (versões 1.0 a 1.9; desliga em 800 mA)."}],
+    quick:["Fusível da central","Teste de zonas (ARM A audível / ARM B silencioso)","Teste de sirene","Endereço dos teclados (end. 810)","Linha telefônica","Chip GPRS","Cabo Ethernet","Aterramento"],
+    ref:`<div class="tbl"><table>
+      <tr><th>Função</th><th>Comando</th></tr>
+      <tr><td>Entrar na programação (instalador 5678, ou 567890 com 6 dígitos)</td><td class="v">Segurar ESC 3 s + senha</td></tr>
+      <tr><td>Sair da programação</td><td class="v">ENTER ou ESC</td></tr>
+      <tr><td>Ver problemas</td><td class="v">PROB</td></tr>
+      <tr><td>Zonas disparadas (memória)</td><td class="v">MEM (ARM B = zonas 11 a 20)</td></tr>
+      <tr><td>Teste de zonas (dentro da programação)</td><td class="v">ARM A audível · ARM B silencioso · ESC sai</td></tr>
+      <tr><td>Endereçar teclados</td><td class="v">End. 810, digitar 1 a 4 em cada teclado, ENTER</td></tr>
+      <tr><td>Ver o valor de um endereço</td><td class="v">Dentro do endereço, MEM</td></tr>
+      <tr><td>Arme forçado (zona aberta)</td><td class="v">AWAY + senha</td></tr>
+      <tr><td>Chime liga/desliga</td><td class="v">Segurar 0 por 3 s</td></tr>
+    </table></div>
+    <h3>Endereços usados no diagnóstico</h3>
+    <div class="tbl"><table>
+      <tr><th>Endereço</th><th>Função</th></tr>
+      <tr><td class="v">700</td><td>Reporte: 2 GPRS · 3 Ethernet · 7 inverte prioridade · 8 modo duplo</td></tr>
+      <tr><td class="v">702 / 703 · 706 / 707</td><td>IP e porta de destino 1 e 2</td></tr>
+      <tr><td class="v">721 / 731</td><td>PIN do chip 1 e 2</td></tr>
+      <tr><td class="v">801</td><td>4 supervisão de teclado · 9 DHCP</td></tr>
+      <tr><td class="v">803</td><td>7 dispara sirene na falha de comunicação armado · 8 reporta problema de GPRS/Ethernet</td></tr>
+      <tr><td class="v">804</td><td>1 zonas com resistor de fim de linha · 2 curto dispara desarmado · 3 zonas duplas · 9 tamper de zona</td></tr>
+      <tr><td class="v">811 a 814</td><td>Opções de cada teclado · tecla 5 bip se houver problema</td></tr>
+    </table></div>
+    <h3>Reset</h3>
+    <div class="tbl"><table>
+      <tr><th>Procedimento</th><th>Efeito</th></tr>
+      <tr><td>Desligar rede e bateria · colocar o jumper RESET · ligar · o LED DISC pisca · tirar o jumper <strong>antes</strong> de o LED parar</td><td>Reset parcial: só a senha mestre (1234) e a de instalador (5678)</td></tr>
+      <tr><td>Mesmo procedimento, tirando o jumper <strong>depois</strong> que o LED parar (~10 s)</td><td>Reset total: volta toda a programação de fábrica</td></tr>
+    </table></div>
+    <h3>Especificações</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Alimentação</td><td class="v">Ultra 90–250 VAC · GPRS 127/220 VAC</td></tr>
+      <tr><td>Carregador / bateria</td><td class="v">13,8 V · 12 V / 7 Ah</td></tr>
+      <tr><td>Saída auxiliar</td><td class="v">850 mA (v2.0+, desliga em 1 A) · 650 mA (v1.0–1.9)</td></tr>
+      <tr><td>Consumo do teclado LED / LCD</td><td class="v">20 mA / 65 mA</td></tr>
+      <tr><td>Módulo Ethernet</td><td class="v">150 mA</td></tr>
+      <tr><td>PGM da placa</td><td class="v">1 A / 30 VDC ou 0,5 A / 127 VAC</td></tr>
+    </table></div>
+    <p class="foot">Fonte: Manual resumido JFL Active 20 Ultra e Active 20 GPRS, v2.2 (rev. 07, 21/8/2012).</p>`
+  },
+  active32:{
+    src:"Manual JFL família Active (Active 8, 20, 20 Ethernet e 32 Duo)",
+    box:"<strong>Onde ver os problemas</strong><span>Teclado LCD TEC-300 / TEC-220 Duo: aperte <em>PROB</em> e navegue com as setas. Touchscreen TS-400: <em>Menu → Problemas</em>.</span><span>O número e o nome do problema aparecem no visor. Para falhas de conexão, use também o diagnóstico do GPRS e da Ethernet.</span>",
+    howto:"Na família Active, o visor mostra o número e o nome de cada problema (lista do Anexo 1 do manual).",
+    note:"Toque no problema que o visor mostrou. Havendo mais de um, navegue com as setas e marque todos.",
+    cats:{1:{name:"Problema mostrado no visor",labels:{1:"01 · AC",2:"02 · Bateria",3:"03 · Sirene",4:"04 · Teclado",5:"05 · Curto de zona",6:"06 · Linha telefônica",7:"07 · Monitoramento por GPRS",8:"08 · Monitoramento por Ethernet",9:"09 · SMS",10:"10 · Módulo de celular",11:"11 · Cabo de rede",12:"12 · DHCP",13:"13 · Tamper",14:"14 · Saída auxiliar",15:"15 · Supervisão sensor sem fio",16:"16 · Bateria fraca sem fio",17:"17 · Chip de celular",18:"18 · Sinal ou operadora",19:"19 · Módulo Ethernet / rede sem fio",20:"20 · Notificação",21:"21 · DDNS",23:"23 · Conflito de IP",24:"24 · SSID não encontrado",25:"25 · Autenticação sem fio",26:"26 · Senha da rede sem fio",28:"28 · AC no teclado sem fio",29:"29 · Servidor DNS",30:"30 · Destino 1",31:"31 · Destino 2",32:"32 · Bateria em curto ou invertida"},det:{
+      1:dd("01 · Falta de AC","crit",["Energia elétrica no local","Fusível de 0,5 A da placa de rede","Jumper de tensão 127/220 V","Transformador: 17,5 V, mínimo 26,5 VA (1,5 A)"],["Restabelecer a energia ou trocar o fusível pelo mesmo valor"],"Anexo 1 e itens 19–20"),
+      2:dd("02 · Problema de bateria","warn",["Bateria desconectada, invertida ou com carga baixa","Bateria que não segura carga (12 V / 7 Ah)","Carregador da central: 14 V"],["Reconectar, carregar ou trocar a bateria"],"Anexo 1 e item 20"),
+      3:dd("03 · Problema de sirene","crit",["Sirene desconectada","Sirene ligada sem o resistor de fim de linha","Carga máxima da sirene: 1,45 A (desliga em 1,6 A)"],["Refazer a ligação e instalar o resistor de fim de linha"],"Anexo 1 e item 20"),
+      4:dd("04 · Problema de teclado","warn",["Teclado retirado ou sem comunicação","Teclado sem fio fora do alcance","Fiação do teclado até 100 m"],["Religar o teclado ou aproximar o teclado sem fio","Endereçar os teclados (end. 810)"],"Anexo 1 e itens 8.3 e 20"),
+      5:dd("05 · Curto de zona","crit",["Fiação do sensor em curto","Resistor de fim de linha ausente ou errado","Resistência máxima do loop: 100 Ω com resistor (1 kΩ sem resistor e sem zona dupla)"],["Eliminar o curto e corrigir o resistor"],"Anexo 1 e item 20"),
+      6:dd("06 · Linha telefônica","warn",["Linha desconectada do alarme","Monitoramento de linha habilitado (end. 802, tecla 3)"],["Religar a linha"],"Anexo 1 e item 9.9"),
+      7:dd("07 · Comunicação com monitoramento por GPRS","warn",["Chip sem crédito ou com limite de dados excedido (pacote mínimo 2 MB)","Internet da estação de monitoramento","LED GPRS do módulo: devagar = procurando sinal · rápido = conectando · aceso = conectado"],["Recarregar o chip","Conferir IP e porta de destino (end. 702/703 e 706/707) e reporte GPRS (end. 700, tecla 2)","Ver o nível de sinal: na programação, tecla STAY"],"Anexo 1 e item 9.2"),
+      8:dd("08 · Comunicação com monitoramento por Ethernet","warn",["Faixa de portas de saída (end. 744) bloqueada por firewall (usa 10 portas a partir da programada)","Internet da estação de monitoramento","LEDs ONLINE 1 / ONLINE 2 do módulo: piscando = tentando · aceso = conectado"],["Liberar as 10 portas no firewall","Conferir destino e reporte Ethernet (end. 700, tecla 3)"],"Anexo 1 e itens 9.3 e 9.10"),
+      9:dd("09 · SMS","info",["Chip sem crédito ou sem SMS","Telefone de destino errado ou sem DDD"],["Corrigir o chip e o número"],"Anexo 1"),
+      10:dd("10 · Módulo de celular","warn",["Módulo com defeito ou solto do conector","Sem chip ou PIN errado","Sem sinal ou operadora não encontrada"],["Reencaixar o módulo, conferir chip e PIN, reposicionar a antena"],"Anexo 1"),
+      11:dd("11 · Cabo de rede","warn",["Cabo Ethernet desconectado"],["Religar ou trocar o cabo"],"Anexo 1"),
+      12:dd("12 · DHCP","warn",["A central não conseguiu IP automático"],["Conferir o roteador ou programar IP fixo (end. 740 a 744)"],"Anexo 1 e item 9.3"),
+      13:dd("13 · Tamper","warn",["Chave tamper de algum sensor aberta","Resistores de fim de linha invertidos ou mal ligados"],["Fechar o sensor e corrigir os resistores"],"Anexo 1"),
+      14:dd("14 · Saída auxiliar","crit",["Problema na saída + e − da central","Carga máxima: Active 8 400 mA (desliga em 500 mA); Active 20 e 32 800 mA (desliga em 1 A)"],["Medir a saída e desligar as cargas uma a uma até achar o curto"],"Anexo 1 e item 20"),
+      15:dd("15 · Supervisão de sensor sem fio","warn",["Sensor sem fio fora do alcance (100 m sem obstáculos)"],["Aproximar o sensor ou usar retransmissão pelo teclado sem fio (item 7.6)"],"Anexo 1 e itens 7 e 20"),
+      16:dd("16 · Bateria fraca de dispositivo sem fio","info",["Sensor, teclado ou controle sem fio com bateria fraca"],["Trocar a bateria do dispositivo"],"Anexo 1"),
+      17:dd("17 · Chip de celular","warn",["Sem chip ou PIN errado"],["Inserir o chip ou corrigir o PIN"],"Anexo 1"),
+      18:dd("18 · Sinal ou operadora","warn",["Sem sinal de celular ou operadora não encontrada"],["Reposicionar a antena externa ou trocar de operadora"],"Anexo 1"),
+      19:dd("19 · Módulo Ethernet ou rede sem fio","warn",["Central sem comunicação com o módulo","Na Active 32, o cabo programador conectado impede o módulo de funcionar"],["Reencaixar o módulo e desconectar o cabo programador"],"Anexo 1 e item 9.3"),
+      20:dd("20 · Notificação","info",["Falha no envio de notificação ao aplicativo"],["Conferir a programação do aplicativo (item 13)"],"Anexo 1"),
+      21:dd("21 · DDNS","warn",["Servidor DDNS sem resposta","Usuário ou senha do DDNS errados","Faixa de portas (end. 744) bloqueada"],["Corrigir usuário/senha e liberar as portas"],"Anexo 1 e item 13.2"),
+      23:dd("23 · Conflito de IP","warn",["Outro equipamento com o mesmo IP"],["Trocar o IP da central ou usar DHCP"],"Anexo 1"),
+      24:dd("24 · SSID não encontrado","warn",["Ponto de acesso fora do alcance ou nome (end. 746) errado"],["Corrigir o SSID ou aproximar o roteador"],"Anexo 1 e item 9.3"),
+      25:dd("25 · Autenticação sem fio não suportada","warn",["A central não suporta a autenticação do roteador (padrão 802.11 b/g)"],["Mudar a segurança do roteador para uma compatível"],"Anexo 1 e item 20"),
+      26:dd("26 · Senha da rede sem fio inválida","warn",["O roteador recusou a senha (end. 747)"],["Corrigir a senha"],"Anexo 1"),
+      28:dd("28 · AC no teclado sem fio","warn",["Teclado sem fio sem energia elétrica"],["Restabelecer a alimentação do teclado"],"Anexo 1"),
+      29:dd("29 · Servidor DNS","warn",["Endereço não resolvido pelo DNS"],["Conferir o DNS da rede local (end. 740 a 744)"],"Anexo 1"),
+      30:dd("30 · Destino 1","warn",["IP ou porta de destino 1 errados","Porta de destino fechada"],["Corrigir end. 702 / 706 e abrir a porta no destino"],"Anexo 1"),
+      31:dd("31 · Destino 2","warn",["IP ou porta de destino 2 errados","Porta de destino fechada"],["Corrigir end. 703 / 707 e abrir a porta no destino"],"Anexo 1"),
+      32:dd("32 · Bateria em curto ou invertida","crit",["Bateria da central em curto ou invertida"],["Corrigir a polaridade ou trocar a bateria"],"Anexo 1")
+    }}},
+    meas:[{id:"ac",label:"Secundário do transformador",unit:"V~",ph:"17,5",hint:"Transformador 127/220 V para 17,5 V, mínimo 26,5 VA (1,5 A)."},{id:"bat",label:"Bateria nos polos",unit:"V=",ph:"12,7",hint:"Em repouso. Bateria 12 V / 7 Ah; carregador da central 14 V."},{id:"aux",label:"Saída auxiliar",unit:"V=",ph:"13,5",hint:"Carga máxima: Active 8 400 mA; Active 20 e 32 800 mA."}],
+    quick:["Fusível 0,5 A","Jumper 127/220 V","Teste de zonas (ARM A / ARM B)","Resistor de fim de linha","Sirene","Nível de sinal GPRS (STAY na programação)","LEDs GPRS / ONLINE do módulo","Portas liberadas (end. 744)","Aterramento"],
+    ref:`<div class="tbl"><table>
+      <tr><th>Função</th><th>Comando</th></tr>
+      <tr><td>Entrar na programação (instalador 5678, ou 567890 com 6 dígitos)</td><td class="v">Segurar ESC 3 s + senha · Touch: Menu → Programação</td></tr>
+      <tr><td>Ver problemas</td><td class="v">PROB (setas navegam) · Touch: Menu → Problemas</td></tr>
+      <tr><td>Nível de sinal do GPRS (na programação)</td><td class="v">STAY · Touch: Comunicação → GPRS</td></tr>
+      <tr><td>Apagar dado / campo na programação</td><td class="v">BYP / segurar BYP 3 s</td></tr>
+      <tr><td>Bloquear o reset</td><td class="v">End. 400 = 159</td></tr>
+    </table></div>
+    <h3>Endereços usados no diagnóstico</h3>
+    <div class="tbl"><table>
+      <tr><th>Endereço</th><th>Função</th></tr>
+      <tr><td class="v">700</td><td>2 reporte GPRS · 3 reporte Ethernet · 7 prioridade · 9 DHCP</td></tr>
+      <tr><td class="v">702 / 703 · 706 / 707</td><td>IP e porta de destino 1 e 2</td></tr>
+      <tr><td class="v">721–724 · 731–734</td><td>APN, login e senha dos chips (automático para Claro, Oi, Tim e Vivo)</td></tr>
+      <tr><td class="v">740 a 744</td><td>Rede local (IP, máscara, gateway, DNS) · 744 faixa de portas de saída (10 portas)</td></tr>
+      <tr><td class="v">746 / 747</td><td>SSID e senha da rede sem fio</td></tr>
+      <tr><td class="v">802</td><td>3 monitoramento da linha telefônica</td></tr>
+      <tr><td class="v">810</td><td>Endereçamento dos teclados</td></tr>
+    </table></div>
+    <h3>LEDs dos módulos</h3>
+    <div class="tbl"><table>
+      <tr><th>LED</th><th>Sinal</th><th>Significado</th></tr>
+      <tr><td>GPRS</td><td>Apagado</td><td>GPRS desabilitado</td></tr>
+      <tr><td>GPRS</td><td>Piscando devagar</td><td>Procurando sinal e operadora</td></tr>
+      <tr><td>GPRS</td><td>Piscando rápido</td><td>Tentando conectar</td></tr>
+      <tr><td>GPRS</td><td>Piscando muito rápido</td><td>Em espera (SMS ou reserva da Ethernet)</td></tr>
+      <tr><td>GPRS</td><td>Aceso</td><td>Conectado por GPRS</td></tr>
+      <tr><td>WF</td><td>Piscando / aceso</td><td>Tentando / conectado ao roteador</td></tr>
+      <tr><td>ONLINE 1 / 2</td><td>Piscando / aceso</td><td>Tentando / conectado ao Active NET</td></tr>
+    </table></div>
+    <h3>Reset</h3>
+    <div class="tbl"><table>
+      <tr><th>Procedimento</th><th>Efeito</th></tr>
+      <tr><td>Desligar bateria e rede · jumper RESET · ligar · LED DISC pisca · tirar o jumper <strong>antes</strong> de parar</td><td>Reset parcial: senha mestre (1234) e instalador (5678)</td></tr>
+      <tr><td>Tirar o jumper <strong>depois</strong> que o LED parar (~10 s)</td><td>Reset total: apaga programação e dispositivos sem fio</td></tr>
+    </table></div>
+    <h3>Características técnicas</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Alimentação / fusível</td><td class="v">127/220 VAC 60 Hz · fusível 0,5 A</td></tr>
+      <tr><td>Transformador (Active 8)</td><td class="v">17,5 V, mín. 26,5 VA (1,5 A)</td></tr>
+      <tr><td>Carregador / bateria</td><td class="v">14 V · 12 V / 7 Ah</td></tr>
+      <tr><td>Saída auxiliar</td><td class="v">Active 8: 400 mA · Active 20 e 32: 800 mA</td></tr>
+      <tr><td>Sirene</td><td class="v">1,45 A (desliga em 1,6 A)</td></tr>
+      <tr><td>PGM</td><td class="v">3 A / 12 VCC ou 2 A / 127–220 VCA</td></tr>
+      <tr><td>Teclados com fio</td><td class="v">até 4, fiação até 100 m</td></tr>
+      <tr><td>Consumo teclado LCD / touch</td><td class="v">70 mA / 125 mA</td></tr>
+      <tr><td>Loop de zona</td><td class="v">100 Ω com resistor · 1 kΩ sem</td></tr>
+      <tr><td>Sem fio</td><td class="v">Active 8/20: 433,92 MHz · Active 32: 863,55–868,95 MHz · 100 m</td></tr>
+    </table></div>
+    <p class="foot">Fonte: Manual JFL família Active (Active 8, Active 20, Active 20 Ethernet, Active 32 Duo), itens 2.15, 9, 16, 19, 20 e Anexo 1.</p>`
+  },
+  ecr18:{
+    src:"Manual do usuário JFL ECR 18 Plus / ECR 18i Plus (versão 2.3 ou superior)",
+    box:"<strong>Painel do eletrificador</strong><span><em>REDE</em> vermelho = na rede; apagado = sem rede. <em>BATERIA</em> vermelho = na bateria. <em>PULSO</em> piscando lento = retorno da alta-tensão.</span><span><em>ZONA</em> vermelho = zonas fechadas; piscando rápido = sensor aberto; piscando lento = disparo. <em>ARMADO</em> verde = armado; piscando = armado parcial (modo dividido).</span>",
+    howto:"Nos eletrificadores, o diagnóstico é pelos LEDs do painel e pelo comportamento da cerca.",
+    note:"Toque no que você observou no eletrificador ou na cerca.",
+    cats:{1:{name:"LED ou sintoma observado",labels:{1:"LED REDE apagado",2:"LED BATERIA aceso",3:"LED PULSO não pisca",4:"LED ZONA piscando rápido",5:"LED ZONA piscando lento",6:"Choque fraco",7:"Disparos falsos",8:"Não arma pelo controle",9:"Não cadastra controle ou sensor",10:"Senha do instalador esquecida"},det:{
+      1:dd("Sem rede elétrica (LED REDE apagado)","crit",["Disjuntor e tomada","Fusível de 1 A da placa","Entrada de rede bivolt 85–265 VAC"],["Restabelecer a rede ou trocar o fusível pelo mesmo valor","Sempre desligar a bateria e o disjuntor antes de mexer"],"itens 3.1, 4.1 e 2"),
+      2:dd("Funcionando na bateria (LED BATERIA aceso)","warn",["Falta de rede (ver LED REDE)","Bateria 12 V / 7 Ah selada; carregador 13,8 VCC (pulsativo)"],["Restabelecer a rede","Usar só bateria recarregável, em local ventilado"],"itens 2 e 4.1"),
+      3:dd("Sem retorno da alta-tensão (LED PULSO não pisca)","crit",["Cerca rompida","Cabos de saída e retorno da alta-tensão (isolação mínima 20 kV, até 30 m cada)","Jumper JA: sem ele o choque fica inibido","Resistência do perímetro: máx. 5000 Ω (18 Plus) ou 13000 Ω (18i Plus)"],["Emendar a cerca e refazer os cabos","Recolocar o JA e armar/desarmar para ler o jumper","Se a cerca estiver boa, segurar PROGRAMAR até o LED apagar (restaura a sensibilidade)"],"itens 3.3, 3.4, 3.1 e 5.4.9"),
+      4:dd("Sensor aberto (LED ZONA piscando rápido)","warn",["Sensor com fio na Z1 aberto (jumper ZONA retirado para usar Z1)","Sensor sem fio aberto"],["Fechar o sensor ou refazer a fiação"],"itens 4.1 e 3.1"),
+      5:dd("Disparo (LED ZONA piscando lento)","warn",["Qual setor disparou: cerca, sensor com fio ou sem fio"],["Desarmar: após disparo o eletrificador dá 2 bips curtos a mais","Procurar fuga na cerca (vegetação, isolador)"],"itens 4.1 e 5.4.6"),
+      6:dd("Choque fraco","warn",GND.concat(["Distância do terra da cerca a outros aterramentos: mais de 2 m (de preferência 10 m)","Cabos de alta isolação e isoladores de no mínimo 20 kV","Tensão de saída (chave AJ. TENSÃO): 1 = 18 kV · 2 = 15 kV · 3 = 12 kV (fábrica)","Perímetro longo demais: medir a resistência (aba Testes)"]),["Melhorar o aterramento","Subir a tensão na chave AJ. TENSÃO e armar/desarmar para aplicar","Aumentar a bitola do fio da cerca"],"itens 3.4, 3.5 e 5.4.8"),
+      7:dd("Disparos falsos","warn",["Vegetação encostando na fiação","Centelha (fuga) entre fio e isolador","Cabos de alta-tensão junto com rede, telefone, sirene ou sensores (manter ~4 cm)","Chave SENSIBIL.: 2 habilita disparo por centelha"],["Podar a vegetação e trocar isoladores com fuga","Separar os cabos","Chave SENSIBIL. em 1 desabilita o disparo por centelha; em 2, reconhecer o perímetro de novo após qualquer reparo"],"itens 3, 5.4.9"),
+      8:dd("Não arma pelo controle","info",["Entrada LIGA programada com retenção (o controle perde o arme)","Modo dividido: tecla 1 alarme, 2 eletrificador, 3 ou 4 total","Controle cadastrado"],["Voltar a entrada LIGA para sem retenção (PROGRAMAR + tecla 2 do controle 3 s)","Recadastrar o controle"],"itens 4.2 e 5.4.7"),
+      9:dd("Não cadastra controle ou sensor","info",["Frequência 433,92 MHz e antena","Durante o reconhecimento de perímetro, controle e sensor não funcionam"],["Terminar o reconhecimento e repetir o cadastro pela tecla APRENDER"],"itens 3.1, 5.4.2 e 5.4.9"),
+      10:dd("Senha do instalador esquecida","info",["Reset parcial volta a senha para 5678 sem apagar programação"],["Desligar bateria e rede 10 s · segurar APRENDER e ligar · soltar enquanto o LED APRENDER pisca (0–5 s) = parcial; soltar depois que parar (10 s) = total","O reset não apaga controles e sensores sem fio"],"item 6")
+    }}},
+    meas:[{id:"perim",label:"Resistência do perímetro",unit:"Ω",ph:"3000",hint:"Máximo: 5000 Ω (ECR 18 Plus) ou 13000 Ω (ECR 18i Plus)."},{id:"bat",label:"Bateria nos polos",unit:"V=",ph:"12,7",hint:"Em repouso. Bateria 12 V / 7 Ah; carregador 13,8 VCC."},{id:"aux",label:"Saída auxiliar (+/−)",unit:"V=",ph:"14",hint:"14 VCC, até 300 mA. Sirene: até 200 mA (uma sirene piezo)."}],
+    quick:["Aterramento (haste 2,4 m)","Retorno da alta-tensão (LED PULSO)","Isoladores e vegetação","Cabos de alta isolação 20 kV","Jumper JA","Chave AJ. TENSÃO","Chave SENSIBIL. / perímetro","Placas de advertência","Fusível 1 A"],
+    ref:`<div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Alimentação</td><td class="v">127–220 VCA (entrada 85–265) · bateria 12 V</td></tr>
+      <tr><td>Consumo</td><td class="v">18 Plus 8 W · 18i Plus 11 W</td></tr>
+      <tr><td>Tensão em aberto</td><td class="v">18.000 V ±10% (ajustável 18/15/12 kV)</td></tr>
+      <tr><td>Energia do pulso</td><td class="v">18 Plus &lt; 0,5 J · 18i Plus 4 J (IEC 60335-2-76: máx. 5 J)</td></tr>
+      <tr><td>Pulsos</td><td class="v">18 Plus 60/min · 18i Plus 50/min · 100 µs</td></tr>
+      <tr><td>Perímetro máximo</td><td class="v">18 Plus 5000 Ω · 18i Plus 13000 Ω</td></tr>
+      <tr><td>Saídas</td><td class="v">AUX 14 VCC 300 mA · SIR 200 mA</td></tr>
+      <tr><td>Fusível</td><td class="v">1 A</td></tr>
+      <tr><td>Capacitor</td><td class="v">18 Plus 5 µF/440 VCA · 18i Plus 40 µF/250 VCA</td></tr>
+    </table></div>
+    <h3>Instalação da cerca</h3>
+    <div class="tbl"><table>
+      <tr><th>Regra</th></tr>
+      <tr><td>Cabos de alta isolação ≥ 20 kV, até 30 m cada; isoladores ≥ 20 kV</td></tr>
+      <tr><td>Hastes a no mínimo 2 m de altura, espaçadas no máximo 3 m, fios sem "barriga"</td></tr>
+      <tr><td>Aterramento próprio: haste cobreada 2,4 m, a mais de 2 m (ideal 10 m) de outros aterramentos</td></tr>
+      <tr><td>Proibido usar o neutro como terra</td></tr>
+      <tr><td>Cabos de AT separados ~4 cm de rede, telefone, sirene e sensores</td></tr>
+      <tr><td>Perto de linha aérea: altura ≤ 3 m (2 m de faixa até 1 kV; 15 m acima de 1 kV)</td></tr>
+      <tr><td>Cerca abaixo de 400 m: a JFL recomenda 12.000 V</td></tr>
+    </table></div>
+    <h3>Programação local</h3>
+    <div class="tbl"><table>
+      <tr><th>Função</th><th>Como fazer</th></tr>
+      <tr><td>Tensão de saída</td><td>Chave AJ. TENSÃO (1 = 18 kV, 2 = 15 kV, 3 = 12 kV) e armar/desarmar</td></tr>
+      <tr><td>Reconhecer perímetro</td><td>SENSIBIL. em 2 · armar · com PULSO piscando, segurar PROGRAMAR e tocar APRENDER · soltar · esperar o LED PROGRAMAR apagar</td></tr>
+      <tr><td>Apagar reconhecimento</td><td>Desarmado, segurar PROGRAMAR 7 s</td></tr>
+      <tr><td>Entrada LIGA com/sem retenção</td><td>Desarmado, segurar PROGRAMAR + tecla 2 do controle 3 s</td></tr>
+      <tr><td>Bip de arme/desarme</td><td>Desarmado, segurar PROGRAMAR + tecla 3 do controle 3 s</td></tr>
+      <tr><td>Reset (instalador volta a 5678)</td><td>Desligar 10 s · segurar APRENDER e ligar · soltar em 0–5 s (parcial) ou após 10 s (total)</td></tr>
+      <tr><td>Programação remota</td><td>App via Bluetooth (ME-05 / MB-01), nuvem ou Programador Linha Cloud</td></tr>
+    </table></div>
+    <p class="foot">Fonte: Manual do usuário JFL ECR 18 Plus / ECR 18i Plus, versão 2.3 ou superior.</p>`
+  },
+  ecr8:{
+    src:"Manual de instalação JFL ECR-8 Plus (rev. 07, 11/09/2007)",
+    box:"<strong>Painel do eletrificador</strong><span><em>LIGADO</em> aceso = ligado. <em>PULSO</em> piscando = recebendo o retorno da alta-tensão. <em>REDE</em> aceso = na rede. <em>BATERIA</em> aceso = na bateria.</span><span>Dentro: <em>LED Liga</em> aceso = alta-tensão habilitada; piscando = programando o tempo de sirene.</span>",
+    howto:"No ECR-8 Plus, o diagnóstico é pelos LEDs do painel e pelo comportamento da cerca.",
+    note:"Toque no que você observou no eletrificador ou na cerca.",
+    cats:{1:{name:"LED ou sintoma observado",labels:{1:"LED REDE apagado",2:"LED BATERIA aceso",3:"LED PULSO não pisca",4:"Choque fraco",5:"Disparos falsos",6:"Sirene não toca",7:"Não avisa a central de alarme"},det:{
+      1:dd("Sem rede elétrica (LED REDE apagado)","crit",["Disjuntor e tomada","Jumper 110-220 na tensão certa"],["Restabelecer a rede e conferir o jumper de tensão"],"parte interna, itens 20 e 21"),
+      2:dd("Funcionando na bateria (LED BATERIA aceso)","warn",["Falta de rede","Bateria selada 12 V; carregador 13,8 V"],["Restabelecer a rede"],"características técnicas"),
+      3:dd("Sem retorno da alta-tensão (LED PULSO não pisca)","crit",["Cerca rompida ou aterrada","Cabos de saída e retorno (isolação mínima 15 kV, até 30 m cada)","Jumper J-A: sem ele o alarme da fiação fica inibido"],["Emendar a cerca e refazer os cabos","Testar: um curto entre a cerca e o terra com fio isolado deve disparar o eletrificador"],"ligação da cerca e considerações finais"),
+      4:dd("Choque fraco","warn",GND.concat(["Umidade do solo e isolação da pessoa influenciam a sensação","Emendas e tensão mecânica dos fios"]),["Melhorar o aterramento em local úmido","Refazer emendas e esticar os fios"],"descrição geral e aterramento"),
+      5:dd("Disparos falsos","warn",["Vegetação encostando na fiação","Faíscas (fuga) ao longo da cerca","Jumper de sensibilidade na posição máxima"],["Podar a vegetação e eliminar as fugas","Passar o jumper de sensibilidade para uma posição menos sensível"],"parte interna (item 4) e considerações finais"),
+      6:dd("Sirene não toca","warn",["Jumper SIR conectado para usar sirene","Até 2 sirenes piezoelétricas","Tempo de disparo: 3 s, 30 s ou 5 min"],["Conectar o jumper SIR e conferir o tempo de disparo"],"instalação de sirenes e sensores"),
+      7:dd("Não avisa a central de alarme","warn",["Contatos CM–NF ligados na zona da central","Jumper SIR desconectado para usar CM–NF","Bip de arme/desarme desabilitado","Fio até a central: até 400 m em 4 vias"],["Refazer a ligação e desconectar o jumper SIR"],"ligação em central de alarme")
+    }}},
+    meas:[{id:"bat",label:"Bateria nos polos",unit:"V=",ph:"12,7",hint:"Em repouso. Carregador do eletrificador: 13,8 V."},{id:"aux",label:"Saída (+) para acessórios",unit:"V=",ph:"13,8",hint:"13,8 VDC para sensores."}],
+    quick:["Aterramento (haste 2,4 m)","Retorno da alta-tensão (LED PULSO)","Teste de curto da cerca ao terra","Vegetação e fugas","Jumper J-A","Jumper SIR / SEN","Jumper 110-220","Placas de advertência (a cada 5 m)"],
+    ref:`<div class="tbl"><table>
+      <tr><th>Item</th><th>Valor</th></tr>
+      <tr><td>Alimentação</td><td class="v">127/220 VAC 60 Hz · 12 VDC bateria</td></tr>
+      <tr><td>Consumo</td><td class="v">5 W (3,6 kWh/mês)</td></tr>
+      <tr><td>Carregador</td><td class="v">13,8 V</td></tr>
+      <tr><td>Tensão de saída</td><td class="v">8000 V ±10%</td></tr>
+      <tr><td>Energia do pulso</td><td class="v">&lt; 1,2 J (IEC 60335-2-76: máx. 5 J)</td></tr>
+      <tr><td>Pulsos</td><td class="v">51/min · 80 µs</td></tr>
+      <tr><td>Corrente com 500 Ω</td><td class="v">2,8 A</td></tr>
+    </table></div>
+    <h3>Instalação</h3>
+    <div class="tbl"><table>
+      <tr><th>Regra</th></tr>
+      <tr><td>Cabos entre cerca e aparelho: isolação mínima 15 kV, até 30 m cada</td></tr>
+      <tr><td>Aterramento próprio: haste cobreada 2,4 m em local úmido; proibido usar o neutro</td></tr>
+      <tr><td>Cabo de AT em conduíte, longe de sirene, telefone e rede</td></tr>
+      <tr><td>Longe de discadora e receptores (mín. 3 m) e do quadro de energia (mín. 10 cm)</td></tr>
+      <tr><td>Até 2 sirenes piezo (SIR), até 5 sensores IV com fio, reed switch até 5 kΩ de fiação</td></tr>
+      <tr><td>Controles e sensores: hopping ou rolling code em 433,92 MHz</td></tr>
+      <tr><td>Placa de advertência a cada 5 m de cerca</td></tr>
+    </table></div>
+    <h3>Jumpers e chaves</h3>
+    <div class="tbl"><table>
+      <tr><th>Item</th><th>Função</th></tr>
+      <tr><td>J-A</td><td>Desconectado inibe o alarme da fiação da cerca</td></tr>
+      <tr><td>SIR</td><td>Conectado para usar sirene; desconectado para usar CM–NF na central</td></tr>
+      <tr><td>SEN</td><td>Retirar para usar sensores com fio</td></tr>
+      <tr><td>Sensibilidade</td><td>Mínima = menos sensível · máxima = muito sensível</td></tr>
+      <tr><td>110-220</td><td>Seleção da tensão da rede</td></tr>
+      <tr><td>Trimpot</td><td>Uso exclusivo da JFL: não mexer</td></tr>
+    </table></div>
+    <p class="foot">Fonte: Manual de instalação JFL ECR-8 Plus, rev. 07 (11/09/2007).</p>`
+  }
+};
+const RULESFLAT={
+  bat:v=>RULES.bat(v),
+  aux:v=>v<11?["crit","Baixa: sobrecarga ou fonte fraca. Desligar as cargas uma a uma."]:v<12?["warn","Um pouco baixa. Conferir o consumo das cargas."]:["ok","Tensão normal para a saída de acessórios."],
+  ac:v=>v<14?["crit","Muito abaixo de 17,5 V: transformador ou rede com problema."]:v<16?["warn","Abaixo do nominal de 17,5 V. Medir o primário."]:v>21?["warn","Acima do esperado para 17,5 V. Conferir o primário 127/220 V."]:["ok","Próximo do nominal de 17,5 V. Em vazio, o secundário mede um pouco acima."],
+  perim:v=>v<=5000?["ok","Dentro do limite dos dois modelos (até 5000 Ω)."]:v<=13000?["warn","Acima do limite do ECR 18 Plus (5000 Ω). Só serve para o ECR 18i Plus (até 13000 Ω)."]:["crit","Acima de 13000 Ω: aumente a bitola do fio ou divida a cerca."]
+};
+
+function isFlat(){return !!FLAT[curModelId()];}
+function isList(){return curModelId()=="axpro"||isFlat();}
+function C(){return curModelId()=="axpro"?CATS_AX:isFlat()?FLAT[curModelId()].cats:CATS;}
 function labelsOf(c){return (curModelId()=="amt4010"&&c==3)?BUS4010:C()[c].labels;}
 
 function detail(cat,k){
   if(curModelId()=="axpro")return CATS_AX[cat].det[k];
+  if(isFlat())return FLAT[curModelId()].cats[cat].det[k];
   const d=detailBase(cat,k);
   if(curModelId()=="amt3010"&&d)return detail3010(cat,k,d);
   if(curModelId()=="amt4010")return detail4010(cat,k,d);
@@ -721,7 +993,7 @@ function renderLcdList(){
   $("lcdlist").innerHTML=Object.keys(C()).map(c=>{
     const ds=st.det[c]||new Set();
     const chips=Object.entries(labelsOf(c)).map(([k,v])=>"<button class='chip' data-cat='"+c+"' data-k='"+k+"' aria-pressed='"+ds.has(+k)+"'>"+v+"</button>").join("");
-    return "<div class='lcdgroup'><h4>"+c+" · "+C()[c].name+"</h4><div class='chips'>"+chips+"</div></div>";
+    return "<div class='lcdgroup'><h4>"+(isFlat()?"":c+" · ")+C()[c].name+"</h4><div class='chips'>"+chips+"</div></div>";
   }).join("");
 }
 $("lcdlist").addEventListener("click",e=>{
@@ -732,11 +1004,11 @@ $("lcdlist").addEventListener("click",e=>{
 });
 function renderLcd(){
   let l1="Sem problemas",l2="marcados";
-  const cs=[...st.cats].sort();
+  const cs=[...st.cats].sort((a,b)=>a-b);
   if(cs.length){
     const ls=(st.model!="lcd"&&st.step=="det"&&st.active)?(st.last&&st.last.c==st.active?st.last:{c:st.active}):(st.last&&st.cats.has(st.last.c)?st.last:{c:cs[cs.length-1]});
     const c=ls.c,ds=st.det[c]||new Set();
-    const k=ls.k!=null&&ds.has(ls.k)?ls.k:(ds.size?[...ds].sort().pop():null);
+    const k=ls.k!=null&&ds.has(ls.k)?ls.k:(ds.size?[...ds].sort((a,b)=>a-b).pop():null);
     if(k!=null){l1=C()[c].name;l2=labelsOf(c)[k];}
     else{l1="Problema";l2=C()[c].name;}
   }
@@ -776,7 +1048,7 @@ $("model").addEventListener("click",e=>{
 });
 
 function render(){
-  const KB=(curModelId()=="amt4010"||curModelId()=="axpro")?["lcd"]:["xat2000","xat3000","lcd"];
+  const KB=(curModelId()=="amt4010"||isList())?["lcd"]:["xat2000","xat3000","lcd"];
   if(KB.indexOf(st.model)<0){st.model=KB[0];st.step="cat";st.active=null;}
   document.querySelectorAll("#model button").forEach(b=>{b.hidden=KB.indexOf(b.dataset.m)<0;});
   document.querySelectorAll("#model button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.m==st.model));
@@ -787,7 +1059,7 @@ function render(){
   const L=labelsNow(),S=setNow();
   const P=PROMPT[st.model]||PROMPT.xat2000;
   if(st.step=="cat"){
-    $("prompt").innerHTML=curModelId()=="axpro"?"Abra o status da central no app e marque as falhas.":P[0];
+    $("prompt").innerHTML=curModelId()=="axpro"?"Abra o status da central no app e marque as falhas.":isFlat()?FLAT[curModelId()].note:P[0];
   }else{
     $("prompt").innerHTML="Categoria <strong>"+st.active+" · "+C()[st.active].name+"</strong>. "+P[1].replace("{c}",st.active);
   }
@@ -796,10 +1068,11 @@ function render(){
     const n=+b.dataset.k,usable=!!L[n];
     b.classList.toggle("lit",usable&&S.has(n));b.disabled=!usable;
   });
-  const isAX=curModelId()=="axpro";
+  const isAX=isList(),FL=FLAT[curModelId()];
   $("model").hidden=isAX;$("axbox").hidden=!isAX;$("lcdscreen").hidden=isAX;$("batinfo").hidden=isAX;
-  $("lcdnote").textContent=isAX?"Toque nas falhas que o app mostrou. A orientação aparece logo abaixo.":"Toque na mensagem que o visor mostrou. Havendo mais de um problema, o visor mostra um de cada vez: marque todos.";
-  $("howto").innerHTML=isAX?"O AX PRO é uma central sem fio: não tem código de teclado. As falhas aparecem no app, na página web e nos avisos de voz da central.":HOWTO[st.model]+(curModelId()=="amt4010"?" O guia da AMT 4010 descreve a exibição de problemas pelo visor do XAT 2000 LCD / XAT 4000 LCD.":"");
+  $("axboxfixed").hidden=!!FL;$("axboxflat").hidden=!FL;if(FL)$("axboxflat").innerHTML=FL.box;
+  $("lcdnote").textContent=FL?FL.note:isAX?"Toque nas falhas que o app mostrou. A orientação aparece logo abaixo.":"Toque na mensagem que o visor mostrou. Havendo mais de um problema, o visor mostra um de cada vez: marque todos.";
+  $("howto").innerHTML=FL?FL.howto:isAX?"O AX PRO é uma central sem fio: não tem código de teclado. As falhas aparecem no app, na página web e nos avisos de voz da central.":HOWTO[st.model]+(curModelId()=="amt4010"?" O guia da AMT 4010 descreve a exibição de problemas pelo visor do XAT 2000 LCD / XAT 4000 LCD.":"");
   const isLcd=st.model=="lcd";
   $("steps").hidden=isLcd;$("allcats").hidden=isLcd;$("legend").hidden=isLcd;
   if(isLcd){$("back").hidden=true;renderLcdList();}
@@ -815,7 +1088,7 @@ function render(){
   const cc=$("catchips");
   if(st.step=="det"&&st.cats.size>1){
     cc.hidden=false;
-    cc.innerHTML=[...st.cats].sort().map(c=>"<button class='chip' data-c='"+c+"' aria-pressed='"+(c==st.active)+"'>"+c+" · "+C()[c].name+"</button>").join("");
+    cc.innerHTML=[...st.cats].sort((a,b)=>a-b).map(c=>"<button class='chip' data-c='"+c+"' aria-pressed='"+(c==st.active)+"'>"+c+" · "+C()[c].name+"</button>").join("");
   }else cc.hidden=true;
   // legend
   $("legend").innerHTML=Object.entries(L).map(([k,v])=>{
@@ -857,10 +1130,10 @@ function catCard(c){
 }
 function renderResults(){
   const out=[];
-  [...st.cats].sort().forEach(c=>{
-    out.push(catCard(c));
+  [...st.cats].sort((a,b)=>a-b).forEach(c=>{
+    if(!isFlat())out.push(catCard(c));
     const ds=st.det[c];
-    if(ds&&ds.size)[...ds].sort().forEach(k=>out.push(card(detail(c,k),c+" · "+C()[c].name)));
+    if(ds&&ds.size)[...ds].sort((a,b)=>a-b).forEach(k=>out.push(card(detail(c,k),(isFlat()?"":c+" · ")+C()[c].name)));
   });
   $("results").innerHTML=out.length?out.join(""):"<p class='empty'>Nenhuma tecla marcada. Com o LED Problema piscando, faça o comando acima e toque nas teclas que acenderam. A orientação aparece aqui.</p>";
   const p=st.det[1]||new Set();
@@ -927,6 +1200,7 @@ const MEASAX=[{id:"rssi",label:"Sinal do periférico (RSSI)",unit:"",ph:"120",hi
 const RULESAX={rssi:v=>v>120?["ok","Forte (verde): pode instalar."]:v>=81?["ok","Médio (amarelo): pode instalar."]:v>=60?["warn","Fraco (vermelho): funciona, mas não é recomendado instalar aí."]:["crit","Inválido (vermelho piscando): não instale aí, não funciona direito."]};
 function measList(){
   if(curModelId()=="axpro")return MEASAX;
+  if(isFlat())return FLAT[curModelId()].meas;
   if(curModelId()=="amt4010")return MEAS.map(m=>m.id=="fonte"?Object.assign({},m,{label:"Saída da fonte chaveada",hint:"No conector de alimentação da placa. Fonte 14,5 VDC / 1,8 A."}):m).concat(MEAS4010);
   if(curModelId()!="amt3010")return MEAS;
   return MEAS.filter(m=>m.id!="fonte").map(m=>MEAS3010[m.id]?Object.assign({},m,MEAS3010[m.id]):m);
@@ -943,7 +1217,7 @@ function renderMeas(){
 function verdict(id){
   const d=st.meas[id]||{},o=$("v-"+id),v=num(d.v);
   if(v==null||isNaN(v)){o.className="verdict";o.textContent="";return null;}
-  const R=(curModelId()=="axpro"&&RULESAX[id])||(curModelId()=="amt3010"&&RULES3010[id])||(curModelId()=="amt4010"&&RULES4010[id])||RULES[id];
+  const R=(isFlat()&&RULESFLAT[id])||(curModelId()=="axpro"&&RULESAX[id])||(curModelId()=="amt3010"&&RULES3010[id])||(curModelId()=="amt4010"&&RULES4010[id])||RULES[id];
   const [c,t]=R(v);o.className="verdict "+c;o.textContent=t;return c;
 }
 $("meas").addEventListener("input",e=>{
@@ -966,7 +1240,7 @@ function renderTests(){
     "<div class='test' data-i='"+i+"'><input class='nm' id='t-n-"+i+"' aria-label='Nome do teste' placeholder='Teste' value='"+esc(t.n)+"'>"+
     "<input class='val' id='t-v-"+i+"' aria-label='Valor ou resultado' placeholder='Valor' value='"+esc(t.v)+"'>"+statusHTML(t.s)+
     "<button type='button' class='del'>Remover</button></div>").join(""):"<p class='empty'>Nenhum teste extra. Toque numa sugestão abaixo ou em Adicionar teste.</p>";
-  const Q=curModelId()=="axpro"?["Teste de caminhada (Walk Test)","Status dos dispositivos no app","Sinal (RSSI) dos periféricos","Bateria dos detectores","Notificação de alarme e tamper","Conexão LAN / Wi-Fi / 4G","Hik-Connect online","Teste de sinalização com a monitoramento","Sirene","Aterramento"]:curModelId()=="amt4010"?QUICK.filter(q=>!/Cabo 4 vias|Teste sem bateria/.test(q)).concat(["Teste de dispositivos (Enter 59 0)","Varredura do barramento (Enter 37)","Jumper de casamento (último dispositivo)","Versão da central (tecla 1 por 3 s)","IP local (tecla 3 por 3 s)","Chip / APN / sinal GPRS"]):curModelId()=="amt3010"?QUICK.filter(q=>!/Fusível 1,0 A|Cabo 4 vias/.test(q)).concat(["Transformador 16,5 VAC","Ajuste de corrente (Enter 56)"]):curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
+  const Q=isFlat()?FLAT[curModelId()].quick:curModelId()=="axpro"?["Teste de caminhada (Walk Test)","Status dos dispositivos no app","Sinal (RSSI) dos periféricos","Bateria dos detectores","Notificação de alarme e tamper","Conexão LAN / Wi-Fi / 4G","Hik-Connect online","Teste de sinalização com a monitoramento","Sirene","Aterramento"]:curModelId()=="amt4010"?QUICK.filter(q=>!/Cabo 4 vias|Teste sem bateria/.test(q)).concat(["Teste de dispositivos (Enter 59 0)","Varredura do barramento (Enter 37)","Jumper de casamento (último dispositivo)","Versão da central (tecla 1 por 3 s)","IP local (tecla 3 por 3 s)","Chip / APN / sinal GPRS"]):curModelId()=="amt3010"?QUICK.filter(q=>!/Fusível 1,0 A|Cabo 4 vias/.test(q)).concat(["Transformador 16,5 VAC","Ajuste de corrente (Enter 56)"]):curModelId()=="amt2018eg"?QUICK.concat(["LED ETH da placa","LED GPRS da placa","Status IP1/IP2 (tecla 9 por 2 s)","Nível de sinal GSM (Anular 2 s)"]):QUICK;
   $("quick").innerHTML=Q.filter(q=>!st.tests.some(t=>t.n==q)).map(q=>"<button type='button' data-q='"+esc(q)+"'>+ "+q+"</button>").join("");
 }
 $("tests").addEventListener("input",e=>{
@@ -1000,10 +1274,10 @@ function buildReport(){
   line("Data",fmtDate(r.data));line("Técnico",r.tecnico);line("Cliente",r.cliente);line("Endereço",r.endereco);line("Fabricante / modelo",modelLabel());line("Equipamento",r.equip);
   if(r.relato&&r.relato.trim()){L.push("");L.push("RELATO DO CLIENTE");L.push(r.relato.trim());}
   const probs=[];
-  [...st.cats].sort().forEach(c=>{
+  [...st.cats].sort((a,b)=>a-b).forEach(c=>{
     const ds=st.det[c];
     if(!ds||!ds.size)probs.push("- Categoria "+c+" ("+C()[c].name+")");
-    else [...ds].sort().forEach(k=>probs.push("- "+c+"."+k+" "+detail(c,k).t));
+    else [...ds].sort((a,b)=>a-b).forEach(k=>probs.push("- "+c+"."+k+" "+detail(c,k).t));
   });
   if(probs.length){L.push("");L.push("FALHAS INDICADAS PELA CENTRAL");L.push(...probs);}
   const tl=[];
@@ -1341,7 +1615,7 @@ const REF={
     </table></div>
     <p class="foot">Fontes: Manual AMT 3010 (rev. 01/17), Guia de instalação AMT 3010 (01/17) e Guia do usuário AMT 3010 (02/11). Programação por computador: AMT Remoto, versão 6.0.9.49 (30/07/2024).</p>`
 };
-function renderRef(){$("refbody").innerHTML=REF[curModelId()]||"";}
+function renderRef(){$("refbody").innerHTML=isFlat()?FLAT[curModelId()].ref:(REF[curModelId()]||"");}
 function switchModel(id){
   if(id==loadedModel)return;
   loadedModel=id;st=load()||blank();st.rep.tecnico=st.rep.tecnico||keepTec;renderAll();
@@ -1361,7 +1635,12 @@ const BRANDS=[
   {id:"hikvision",name:"Hikvision",models:[
     {id:"axpro",name:"AX PRO",desc:"Central sem fio · LAN, Wi-Fi e 4G/GPRS · configuração pelo Hik-Connect / Hik-ProConnect e web · manual v1.2.7 (2022)",ready:true}
   ]},
-  {id:"jfl",name:"JFL",models:[]}
+  {id:"jfl",name:"JFL",models:[
+    {id:"active32",name:"Família Active (8, 20, 20 Ethernet, 32 Duo)",desc:"Centrais com teclado LCD TEC-300, TEC-220 Duo ou touchscreen TS-400 · problemas numerados 01 a 32",ready:true},
+    {id:"active20",name:"Active 20 Ultra / 20 GPRS",desc:"Teclado de LEDs TEC-100 / TEC-100R ou LCD · tecla PROB · manual resumido v2.2",ready:true},
+    {id:"ecr18",name:"Eletrificador ECR 18 Plus / 18i Plus",desc:"Cerca elétrica 18 kV · 0,5 J / 4 J · LEDs REDE, BATERIA, PULSO, ZONA e ARMADO · versão 2.3+",ready:true},
+    {id:"ecr8",name:"Eletrificador ECR-8 Plus",desc:"Cerca elétrica 8 kV · 1,2 J · LEDs LIGADO, PULSO, REDE e BATERIA · rev. 07",ready:true}
+  ]}
 ];
 let nav={brand:null,model:null};
 function curBrand(){return BRANDS.find(b=>b.id==nav.brand);}
